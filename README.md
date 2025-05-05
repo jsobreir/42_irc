@@ -36,10 +36,6 @@ ft_irc Internet Relay Chat
 ## Task List
 # IRC Project - 42
 
-This repository contains my implementation of a basic IRC (Internet Relay Chat) server in C++. Below is the step-by-step roadmap followed during development.
-
----
-
 ## 1. Understand the Project Requirements
 
 - Read the subject thoroughly.
@@ -47,22 +43,17 @@ This repository contains my implementation of a basic IRC (Internet Relay Chat) 
 - Determine the protocol version (RFC 1459 or 2812, usually).
 - Understand the required commands (`PASS`, `NICK`, `USER`, `JOIN`, `PRIVMSG`, etc.).
 
----
-
 ## 2. Setup the Project Structure
 
 - Create a Git repository.
 - Setup the `Makefile`.
 - Plan the file structure (`main.cpp`, `Server.hpp/cpp`, `Client.hpp/cpp`, etc.).
 
----
-
 ## 3. Basic Server Setup
 
 - Use `socket()`, `bind()`, `listen()`, and `accept()` to create the TCP server.
 - Use `poll()` or `select()` to handle multiple client connections.
 
----
 
 ## 4. Handle New Connections
 
@@ -70,15 +61,11 @@ This repository contains my implementation of a basic IRC (Internet Relay Chat) 
 - Store client sockets and their info in a data structure (e.g. `std::map<int, Client>`).
 - Handle client disconnection properly.
 
----
-
 ## 5. Parse Incoming Data
 
 - Read from client sockets.
 - Buffer partial messages.
 - Parse complete messages when receiving `\r\n`.
-
----
 
 ## 6. Implement Command Processing
 
@@ -89,38 +76,23 @@ Implement the following commands:
 - `JOIN`, `PART`, `PRIVMSG`, `NOTICE`, `QUIT`: chat-related commands.
 - `MODE`, `TOPIC`, `KICK`, `INVITE`, etc. (if required or as bonus).
 
----
-
 ## 7. Channel Management
 
 - Implement a `Channel` class.
 - Manage users, operators, and channel-specific settings.
 - Track which clients are in which channels.
-
----
-
+  
 ## 8. Authentication & Registration
 
 - Ensure clients can only interact after completing the login sequence (`PASS`, `NICK`, and `USER`).
 
----
 
 ## 9. Test Thoroughly
 
 - Use tools like `nc`, `telnet`, or IRC clients (e.g., HexChat, irssi).
 - Test handling of malformed messages and out-of-order commands.
 - Simulate multiple clients and edge cases.
-
----
-
-## 10. Bonus (Optional)
-
-- Channel modes (`+i`, `+k`, `+t`, etc.).
-- User modes and privileges.
-- Operator system (`OPER`, `KILL`, etc.).
-- SSL/TLS support.
-- Web interface or GUI client.
-
+  
 ## Installing and Using
 To download, clone the repository into your device and navigate inside using `cd push_swap`, then typing  `make` to compile all the functions and generate the executable push_swap, which you can run as follows:
 
