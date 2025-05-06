@@ -5,7 +5,7 @@ INC = -I$(ROOT)/includes
 VPATH = src includes
 RM = rm -rf
 
-NAME = AForm
+NAME = IRC 
 SRC = main.cpp Client.cpp Server.cpp
 
 OBJ_DIR = obj

@@ -32,4 +32,5 @@ Client::~Client() {
 void Client::setPasswd(std::string passwd) {
     _password = passwd;
     _received_passwd = true;
+	std::cout << "Client " << _fd << " passwd is: " << _password << std::endl;
 }

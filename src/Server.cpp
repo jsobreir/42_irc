@@ -106,7 +106,7 @@ void Server::handleClientMessage(int client_fd, const char *msg) {
 		for (size_t i = 0; i < _clients.size(); i++) {
 			if (_clients[i]->getFd() == client_fd) {
 				std::cout << "Setting password for client " << client_fd << std::endl;
-				_clients[i]->setPass(msg); // assumes you have setPass() and getFd()
+				_clients[i]->setPasswd(msg); // assumes you have setPass() and getFd()
 			}
 		}
 	}
