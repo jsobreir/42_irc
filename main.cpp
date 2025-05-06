@@ -1,10 +1,23 @@
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <iostream>
 #include <cstring>
+#include <errno.h>
 
+#include "IRC.hpp"
+
+int main (int argc, char **argv) {
+    (void)argc;
+    (void)argv;
+    Server Server;
+    Server.start();
+}
+
+
+/*
 int main() {
     int server_fd, client_fd;
     struct sockaddr_in server_addr, client_addr;
@@ -69,3 +82,4 @@ int main() {
 
     return 0;
 }
+=======*/
