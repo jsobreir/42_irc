@@ -2,6 +2,7 @@
 #define CLIENT_HPP
 
 #include "IRC.hpp"
+#include "Channel.hpp"
 
 
 class Client {
@@ -18,6 +19,7 @@ class Client {
         int _fd;
         bool _received_passwd;
         std::string _password;
+		Channel	_channel;
 } ;
 
 
