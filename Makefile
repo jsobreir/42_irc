@@ -6,7 +6,7 @@ VPATH = src includes
 RM = rm -rf
 
 NAME = IRC 
-SRC = main.cpp Client.cpp Server.cpp
+SRC = main.cpp Client.cpp Server.cpp Channel.cpp
 
 OBJ_DIR = obj
 OBJ = $(SRC:%.cpp=$(OBJ_DIR)/%.o)

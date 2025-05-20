@@ -11,12 +11,15 @@
 #include <arpa/inet.h> // For htons, inet_*
 #include <poll.h>      // For struct pollfd, poll()
 #include <cstdlib>     // For perror
-#include "Server.hpp"
-#include "Client.hpp"
 #include <cstdio> 
 #include <sstream>
-#include <mensagens.hpp>
+#include <algorithm>
+#include <vector>
 
+#include <Messages.hpp>
+#include "Server.hpp"
+#include "Client.hpp"
+#include "Channel.hpp"
 
 #define MAX_CLIENTS 1024
 

@@ -5,18 +5,22 @@
 
 
 class Client;
+class Channel;
 
 class Server {
 	private:
 		std::vector<Client *> _clients;
+		std::vector<Channel *> _channels;
 	public:
 		Server ();
 		Server (Server const &other);
 		Server &operator=(Server const &other);
 		~Server();
 		void start();
-		void handleClientMessage(int client_fd, const char *msg);
+		int handleClientMessage(int client_fd, const char *msg);
 		Client *getClient(int fd);
+		Channel *getChannel(std::string channelName);
+		void joinChannel(Client *client, const std::string &channelName);
 };
 
 #endif
