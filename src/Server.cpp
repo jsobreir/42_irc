@@ -97,17 +97,50 @@ void Server::start() {
 	}
 }
 
-void Server::handleClientMessage(int client_fd, const char *msg) {
+void Server::handleClientMessage(int client_fd, const char *msg)
+{
 	std::stringstream ss(msg);
 	std::string command;
 	ss >> command;
 
-	if (command == "PASS") {
-		for (size_t i = 0; i < _clients.size(); i++) {
-			if (_clients[i]->getFd() == client_fd) {
+	if (command == "JOIN")
+	{
+		std::string channel;
+		ss >> channel;
+		std::cout << RPL_JOIN(client);
+	}
+	else if (command == "NICK")
+	{
+		std::string nickname;
+		ss >> nickname;
+		std::cout << "Client " << client_fd << " set nickname to " << nickname << std::endl;
+	}
+	else if (command == "USER")
+	{
+		std::string username;
+		ss >> username;
+		std::cout << "Client " << client_fd << " set username to " << username << std::endl;
+	}
+	if (command == "PASS")
+	{
+		for (size_t i = 0; i < _clients.size(); i++)
+		{
+			if (_clients[i]->getFd() == client_fd)
+			{
 				std::cout << "Setting password for client " << client_fd << std::endl;
 				_clients[i]->setPasswd(msg); // assumes you have setPass() and getFd()
 			}
 		}
 	}
 }
+
+
+/*Client *Server::getClient(int fd)
+{
+	for (size_t i = 0; i < _clients.size(); i++) {
+		if (_clients[i]->getFd() == fd) {
+			return _clients[i];
+		}
+	}
+	return NULL;
+}*/

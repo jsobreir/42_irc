@@ -15,6 +15,8 @@
 #include "Client.hpp"
 #include <cstdio> 
 #include <sstream>
+#include <mensagens.hpp>
+
 
 #define MAX_CLIENTS 1024
 

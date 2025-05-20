@@ -3,6 +3,7 @@
 
 #include "IRC.hpp"
 
+
 class Client;
 
 class Server {
@@ -15,6 +16,7 @@ class Server {
 		~Server();
 		void start();
 		void handleClientMessage(int client_fd, const char *msg);
+		Client *getClient(int fd);
 };
 
 #endif
