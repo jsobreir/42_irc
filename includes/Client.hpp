@@ -18,6 +18,7 @@ class Client {
         int _fd;
         bool _received_passwd;
         std::string _password;
+		std::string _nick;
 } ;
 
 
