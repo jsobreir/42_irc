@@ -280,6 +280,21 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
         channel->addClient(client);
     }
 
+    // Send the JOIN message itself — this tells the client it has joined the channel
+    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+
+    // Optionally broadcast the JOIN to other clients already in the channel (excluding the joining client)
+    const std::vector<Client*> &clients = channel->getClients();
+	for (size_t i = 0; i < clients.size(); i++) {
+		Client *otherClient = clients[i];
+		if (otherClient != client) {
+			send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+		}
+	}
+	
+
     // Send RPL_TOPIC (332) - For now no topic, send empty string
     std::string topic = ""; // You can extend Channel class to store a topic later
     std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
@@ -287,7 +302,6 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 
     // Send RPL_NAMREPLY (353) - List of users
     std::string userList = "";
-    const std::vector<Client*> &clients = channel->getClients(); // Add getter for _channelClients
     for (size_t i = 0; i < clients.size(); i++) {
         if (i != 0) userList += " ";
         userList += clients[i]->getNick();
