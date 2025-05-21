@@ -15,9 +15,12 @@ class Server {
 		int _server_fd;
 		std::string _creationDate;
 		std::string _serverName;
+		int _port;
+		std::string _password;
 	public:
 		Server ();
-		Server (Server const &other);
+		Server (int port, std::string password);
+		Server (Server const &other); 
 		Server &operator=(Server const &other);
 		~Server();
 		int getServerFd(void) const;
@@ -29,7 +32,7 @@ class Server {
 		Client *getClient(int fd);
 		Channel *getChannel(std::string channelName);
 		void joinChannel(Client *client, const std::string &channelName);
+		const std::string &getPassword() const;
 };
 
-void handleSIGINT(int sig);
-#endif
+# endif

@@ -42,3 +42,11 @@ void Channel::addClient(Client *client)
 	_channelClients.push_back(client);
 	std::cout << "Client " << client->getFd() << " joined channel " << _name << std::endl;
 }
+
+void Client::setAuthenticated(bool value) {
+	_authenticated = value;
+}
+
+bool Client::isAuthenticated() const {
+	return _authenticated;
+}

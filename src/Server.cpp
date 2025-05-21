@@ -5,6 +5,25 @@
 
 #define MAX_CLIENTS 1024
 
+Server::Server(int port, std::string password)
+	: _nfds(1),
+	  _server_fd(-1),
+	  _serverName("42_ft_IRC"),
+	  _port(port),
+	  _password(password)
+{
+	std::time_t now = std::time(NULL);
+	struct tm *ltm = std::localtime(&now);
+	char buffer[20];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
+	_creationDate = buffer;
+}
+
+const std::string &Server::getPassword() const {
+	return _password;
+}
+
+
 Server::Server() {
 	_nfds = 1;
 
@@ -37,6 +56,15 @@ Server::~Server() {}
 int Server::getServerFd(void) const {
 	return _server_fd;
 }
+
+void handleSIGINT(int sig) {
+	std::cout << "Terminate." << std::endl;
+	(void)sig;
+	close(g_server->getServerFd());
+	g_server->closeAllClientFds();
+	exit(0);
+}
+
 void Server::start() {
 	struct sockaddr_in server_addr;
 	int port = 6667;
@@ -49,9 +77,9 @@ void Server::start() {
 
 	// Set SO_REUSEADDR to allow immediate reuse of the port
 	int opt = 1;
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
@@ -91,14 +119,6 @@ void Server::start() {
 		// Handle client data
 		handleClientData(fds);
 	}
-}
-
-void handleSIGINT(int sig) {
-	std::cout << "Terminate." << std::endl;
-	(void)sig;
-	close(g_server->getServerFd());
-	g_server->closeAllClientFds();
-	exit(0);
 }
 
 void Server::acceptNewClient(struct pollfd fds[]) {
@@ -172,14 +192,26 @@ int Server::handleClientMessage(int fd, const char *msg)
 				#endif
 			}
 		}
-
 		else if (command == "PASS") {
-			#if DEBUG
-				std::cout << "[DBG]Setting password for client " << fd << std::endl;
-			#endif
-			client->setPasswd(line);
-		}
+			std::string user_pass;
+			ss >> user_pass; // get the password client sent (not the entire line)
 
+			#if DEBUG
+				std::cout << "[DBG]Client " << fd << " sent PASS: " << user_pass << std::endl;
+			#endif
+
+			if (user_pass == getPassword()) {
+				client->setAuthenticated(true);
+				client->setPasswd(user_pass);
+				#if DEBUG
+					std::cout << "[DBG]Client " << fd << " authenticated successfully." << std::endl;
+				#endif
+			} else {
+				#if DEBUG
+					std::cout << "[DBG]Client " << fd << " failed authentication with PASS." << std::endl;
+				#endif
+			}
+		}
 		else if (command == "NICK") {
 			std::string nickname;
 			commandStream >> nickname;
