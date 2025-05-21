@@ -2,7 +2,6 @@
 #include "Client.hpp"
 #include "IRC.hpp"
 
-
 #define MAX_CLIENTS 1024
 
 Server::Server() {
@@ -248,69 +247,60 @@ Client *Server::getClient(int fd)
 }
 
 Channel* Server::getChannel(std::string channelName) {
-    for (size_t i = 0; i < _channels.size(); i++) {
-        if (_channels[i].getName() == channelName) {
-            return &_channels[i];
-        }
-    }
-    return NULL;
+	for (size_t i = 0; i < _channels.size(); i++) {
+		if (_channels[i].getName() == channelName) {
+			return &_channels[i];
+		}
+	}
+	return NULL;
 }
 
-// void Server::joinChannel(Client *client, const std::string &channelName) {
-//     Channel* channel = getChannel(channelName);
-//     if (!channel) {
-//         Channel newChannel;              // create Channel object
-//         newChannel.setName(channelName);
-//         newChannel.addClient(client);
-//         _channels.push_back(newChannel); // push copy into vector
-//     } else {
-//         channel->addClient(client);
-//     }
-// }
-
 void Server::joinChannel(Client *client, const std::string &channelName) {
-    Channel *channel = getChannel(channelName);
-    if (!channel) {
-        Channel newChannel;
-        newChannel.setName(channelName);
-        newChannel.addClient(client);
-        _channels.push_back(newChannel);  // Store by value, not pointer
-        channel = &_channels.back();
-    } else {
-        channel->addClient(client);
-    }
+	Channel *channel = getChannel(channelName);
+	if (!channel) {
+		Channel newChannel;
+		newChannel.setName(channelName);
+		newChannel.addClient(client);
+		_channels.push_back(newChannel);
+		channel = &_channels.back();
+	} else {
+		channel->addClient(client);
+	}
 
-    // Send the JOIN message itself — this tells the client it has joined the channel
-    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
-    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+	// Send the JOIN message itself — this tells the client it has joined the channel
+	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
-    // Optionally broadcast the JOIN to other clients already in the channel (excluding the joining client)
-    const std::vector<Client*> &clients = channel->getClients();
+	// Broadcast the JOIN to other clients already in the channel (excluding the joining client)
+	const std::vector<Client*> &clients = channel->getClients();
 	for (size_t i = 0; i < clients.size(); i++) {
 		Client *otherClient = clients[i];
 		if (otherClient != client) {
 			send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 		}
 	}
-	
 
-    // Send RPL_TOPIC (332) - For now no topic, send empty string
-    std::string topic = ""; // You can extend Channel class to store a topic later
-    std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
-    send(client->getFd(), msg.c_str(), msg.length(), 0);
+	// Send RPL_TOPIC (332) - For now no topic, send empty string
+	std::string topic = ""; // You can extend Channel class to store a topic later
+	std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
 
-    // Send RPL_NAMREPLY (353) - List of users
-    std::string userList = "";
-    for (size_t i = 0; i < clients.size(); i++) {
-        if (i != 0) userList += " ";
-        userList += clients[i]->getNick();
-    }
-    msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
-    send(client->getFd(), msg.c_str(), msg.length(), 0);
+	// Send RPL_NAMREPLY (353) - List of users
+	std::string userList = "";
+	Client* op = channel->getOperator();  // get operator client pointer
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (i != 0)
+			userList += " ";
+		if (clients[i] == op)
+			userList += "@";  // prefix operator with @
+		userList += clients[i]->getNick();
+	}
+	msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
 
-    // Send RPL_ENDOFNAMES (366)
-    msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
-    send(client->getFd(), msg.c_str(), msg.length(), 0);
+	// Send RPL_ENDOFNAMES (366)
+	msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
 }
 
