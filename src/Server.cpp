@@ -42,9 +42,9 @@ void Server::start() {
 
 	// Set SO_REUSEADDR to allow immediate reuse of the port
 	int opt = 1;
-	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
-		close(_server_fd);
+		close(server_fd);
 		return;
 	}
 

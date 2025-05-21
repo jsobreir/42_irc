@@ -7,7 +7,7 @@
 
 #define RPL_CREATED(date) ("003 :This server was created " + _creationDate + "\n")
 
-#define RPL_MYINFO(server, nick, version) (_serverName + " 004 " + client->getNick() + " " + _serverVersion + " :Available user modes: io, channel modes: tkl\r\n")
+#define RPL_MYINFO(server, nick, version) ("004 " + nick + " " + server + " " + version + " :Available user modes: io, channel modes: tkl\r\n")
 /*-----------------------------*/
 
 
