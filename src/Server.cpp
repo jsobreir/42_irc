@@ -36,6 +36,7 @@ Server::Server() {
 	_creationDate = buffer;
 
 	_serverName = "42_ft_IRC";
+	_serverVersion = "1.0";
 }
 
 Server::Server(Server const &other) {
@@ -231,30 +232,42 @@ int Server::handleClientMessage(int fd, const char *msg)
 
 			if (!client->getNick().empty() && !client->getUser().empty()) {
 				// Welcome message
-				std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to " + _serverName + ", " + client->getNick() + "\r\n";
+				std::string welcome = RPL_WELCOME(client->getNick(), _serverName);
 				send(fd, welcome.c_str(), welcome.length(), 0);
 
 				// Host information
-				std::string hostInfo = ":localhost 002 :Your host is " + _serverName + ", running version 1.0\r\n";
+				std::string hostInfo = RPL_YOURHOST(_serverName);
 				send(fd, hostInfo.c_str(), hostInfo.length(), 0);
 
 				// Server creation date
-				std::string creationDate = ":localhost 003 :This server was created " + _creationDate + "\r\n";
+				std::string creationDate = RPL_CREATED(_creationDate);
 				send(fd, creationDate.c_str(), creationDate.length(), 0);
 
 				// Server capabilities
-				std::string capabilities = ":localhost 004 " + client->getNick() + " 1.0 :Available user modes: io, channel modes: tkl\r\n";
+				std::string capabilities = RPL_MYINFO(_serverName, client->getNick(), _serverVersion);
 				send(fd, capabilities.c_str(), capabilities.length(), 0);
 
 				// Message of the day (MOTD)
-				std::string motdStart = ":localhost 375 " + client->getNick() + " :- Server Message of the day -\r\n";
+				std::string motdStart = RPL_MOTDSTART(client->getNick());
 				send(fd, motdStart.c_str(), motdStart.length(), 0);
 
-				std::string motd = ":localhost 372 " + client->getNick() + " : Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n";
+				std::string motd = RPL_MOTD(client->getNick());
 				send(fd, motd.c_str(), motd.length(), 0);
 
 				#if DEBUG
 					std::cout << "[DBG]Sent full welcome sequence to client " << fd << std::endl;
+				#endif
+			}
+		}
+
+		else if (command == "JOIN") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (!channelName.empty()) {
+				joinChannel(client, channelName);
+				#if DEBUG
+					std::cout << "[DBG]Client " << fd << " joined channel " << channelName << std::endl;
 				#endif
 			}
 		}
@@ -266,7 +279,35 @@ int Server::handleClientMessage(int fd, const char *msg)
 			close(fd);
 			return 0; // Prevent server shutdown
 		}
+		else if (command == "PRIVMSG") {
+			std::string target;
+			commandStream >> target;
 
+			std::string message;
+			std::getline(commandStream, message); // message starts with space + ':'
+			if (!message.empty() && message[0] == ' ')
+				message.erase(0, 1);
+			if (!message.empty() && message[0] == ':')
+				message.erase(0, 1);
+
+			if (!target.empty() && !message.empty()) {
+				std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost";
+				std::string fullMsg = prefix + " PRIVMSG " + target + " :" + message + "\r\n";
+
+				// Handle only channels (targets starting with '#')
+				if (target[0] == '#') {
+					Channel *chan = getChannel(target); // You need this method to retrieve the channel
+					if (chan) {
+						const std::vector<Client *> &clients = chan->getClients();
+						for (size_t i = 0; i < clients.size(); ++i) {
+							if (clients[i]->getFd() != fd) { // don't echo back to sender
+								send(clients[i]->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+							}
+						}
+					}
+				}
+			}
+		}
 		else {
 			#if DEBUG
 				std::cout << "[DBG]Unknown command: " << command << std::endl;
@@ -294,25 +335,70 @@ Client *Server::getClient(int fd)
 	}
 	return NULL;
 }
-Channel *Server::getChannel(std::string channelName)
-{
-	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i]->getName() == channelName) {
-			return _channels[i];
-		}
-	}
-	return NULL;
+
+Channel* Server::getChannel(std::string channelName) {
+    for (size_t i = 0; i < _channels.size(); i++) {
+        if (_channels[i].getName() == channelName) {
+            return &_channels[i];
+        }
+    }
+    return NULL;
 }
+
+// void Server::joinChannel(Client *client, const std::string &channelName) {
+//     Channel* channel = getChannel(channelName);
+//     if (!channel) {
+//         Channel newChannel;              // create Channel object
+//         newChannel.setName(channelName);
+//         newChannel.addClient(client);
+//         _channels.push_back(newChannel); // push copy into vector
+//     } else {
+//         channel->addClient(client);
+//     }
+// }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
-	if (!getChannel(channelName)) {
-		Channel newChannel;
-		newChannel.setName(channelName);
-		newChannel.addClient(client);
-		_channels.push_back(&newChannel);
-	}
-	else {
-		getChannel(channelName)->addClient(client);
-	}
-}
+    Channel *channel = getChannel(channelName);
+    if (!channel) {
+        Channel newChannel;
+        newChannel.setName(channelName);
+        newChannel.addClient(client);
+        _channels.push_back(newChannel);  // Store by value, not pointer
+        channel = &_channels.back();
+    } else {
+        channel->addClient(client);
+    }
 
+    // Send the JOIN message itself — this tells the client it has joined the channel
+    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+
+    // Optionally broadcast the JOIN to other clients already in the channel (excluding the joining client)
+    const std::vector<Client*> &clients = channel->getClients();
+	for (size_t i = 0; i < clients.size(); i++) {
+		Client *otherClient = clients[i];
+		if (otherClient != client) {
+			send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+		}
+	}
+	
+
+    // Send RPL_TOPIC (332) - For now no topic, send empty string
+    std::string topic = ""; // You can extend Channel class to store a topic later
+    std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_NAMREPLY (353) - List of users
+    std::string userList = "";
+    for (size_t i = 0; i < clients.size(); i++) {
+        if (i != 0) userList += " ";
+        userList += clients[i]->getNick();
+    }
+    msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_ENDOFNAMES (366)
+    msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+}

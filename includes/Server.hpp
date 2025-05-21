@@ -10,13 +10,14 @@ class Channel;
 class Server {
 	private:
 		std::vector<Client *> _clients;
-		std::vector<Channel *> _channels;
+		std::vector<Channel> _channels;
 		int _nfds;
 		int _server_fd;
 		std::string _creationDate;
 		std::string _serverName;
 		int _port;
 		std::string _password;
+		std::string _serverVersion;
 	public:
 		Server ();
 		Server (int port, std::string password);
@@ -30,9 +31,11 @@ class Server {
 		int handleClientMessage(int client_fd, const char *msg);
 		void closeAllClientFds(void);
 		Client *getClient(int fd);
+		Client *getClientByNick(const std::string &nickname);
 		Channel *getChannel(std::string channelName);
 		void joinChannel(Client *client, const std::string &channelName);
 		const std::string &getPassword() const;
+		
 };
 
 # endif
