@@ -1,2 +1,6 @@
 *.o
 obj/
+# Ignore the executable
+IRC
+# Ignore the .vscode directory
+.vscode/
