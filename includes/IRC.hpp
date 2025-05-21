@@ -15,6 +15,8 @@
 #include <sstream>
 #include <algorithm>
 #include <vector>
+#include <ctime>
+#include <sstream>
 
 #include <Messages.hpp>
 #include "Server.hpp"
@@ -22,5 +24,6 @@
 #include "Channel.hpp"
 
 #define MAX_CLIENTS 1024
+#define DEBUG 0
 
 #endif

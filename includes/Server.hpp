@@ -11,6 +11,8 @@ class Server {
 	private:
 		std::vector<Client *> _clients;
 		std::vector<Channel *> _channels;
+		std::string _creationDate;
+		std::string _serverName;
 	public:
 		Server ();
 		Server (Server const &other);

@@ -5,7 +5,17 @@
 
 #define MAX_CLIENTS 1024
 
-Server::Server() {}
+Server::Server() {
+	std::time_t now = std::time(0);
+	struct tm *ltm = std::localtime(&now);
+
+	// Format the time as "YYYY-MM-DD HH:MM:SS"
+	char buffer[20];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
+	_creationDate = buffer;
+
+	_serverName = "42_ft_IRC";
+}
 
 Server::Server(Server const &other) {
 	(void)other;
@@ -21,12 +31,19 @@ Server::~Server() {}
 void Server::start() {
 	int server_fd, client_fd;
 	struct sockaddr_in server_addr;
-	//socklen_t client_addr_len = sizeof(sockaddr_in);
 	int port = 6667;
 
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd < 0) {
 		perror("socket");
+		return;
+	}
+
+	// Set SO_REUSEADDR to allow immediate reuse of the port
+	int opt = 1;
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+		perror("setsockopt");
+		close(server_fd);
 		return;
 	}
 
@@ -90,8 +107,7 @@ void Server::start() {
 				} else {
 					std::cout << "Received message from client: " << buffer << std::endl;
 					buffer[bytes] = '\0';
-					if (handleClientMessage(fds[i].fd, buffer) == 1)
-						exit(0);
+					handleClientMessage(fds[i].fd, buffer);
 				}
 			}
 		}
@@ -101,102 +117,112 @@ void Server::start() {
 int Server::handleClientMessage(int fd, const char *msg)
 {
 	std::stringstream ss(msg);
-	std::string command;
-	ss >> command;
+	std::string line;
 
-	Client *client = getClient(fd);
-	if (!client)
-		return 0;
-
-	if (command == "PASS") {
-		std::cout << "[DBG]Setting password for client " << fd << std::endl;
-		client->setPasswd(msg);
-	}
-
-	else if (command == "NICK") {
-		std::string nickname;
-		ss >> nickname;
-		client->setNick(nickname);
-		std::cout << "[DBG]Client " << fd << " set nickname to " << nickname << std::endl;
-	}
-
-	else if (command == "USER") {
-		std::string username;
-		ss >> username;
-		client->setUser(username);
-		std::cout << "[DBG]Client " << fd << " set username to " << username << std::endl;
-
-		if (!client->getNick().empty() && !client->getUser().empty()) {
-			std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to the IRC server\r\n";
-			send(fd, welcome.c_str(), welcome.length(), 0);
+	// Process each line (command) separately
+	while (std::getline(ss, line)) {
+		// Remove any trailing carriage return
+		if (!line.empty() && line[line.size() - 1] == '\r') {
+			line.erase(line.size() - 1);
 		}
-	}
 
-	else if (command == "JOIN") {
-		std::string channel;
-		ss >> channel;
-		std::cout << "[DBG]Client " << fd << " joined channel " << channel << std::endl;
-		std::string reply = RPL_JOIN(client->getNick(), client->getUser(), "localhost", channel);
-		send(fd, reply.c_str(), reply.length(), 0);
-	}
-	else if (command == "DEBUG") {
-		for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-			std::cout << "Client fd: " << (*it)->getFd() << std::endl;
-		}
-	}
-	else if (command == "EXIT") {
-		std::cout << "[DBG]Client " << fd << " disconnected" << std::endl;
-		close(fd);
-		return 1;
-	}else if (command == "PRIVMSG") {
-		std::string target, msg_body;
-		ss >> target;
-		std::getline(ss, msg_body);
-		
-		// Remove leading colon and spaces
-		if (!msg_body.empty() && msg_body[0] == ':')
-			msg_body = msg_body.substr(1);
-		
-		// Trim leading spaces (optional)
-		while (!msg_body.empty() && isspace(msg_body[0]))
-			msg_body.erase(0, 1);
-	
-		if (target.empty() || msg_body.empty()) {
-			std::string error = "461 " + client->getNick() + " PRIVMSG :Not enough parameters\r\n";
-			send(fd, error.c_str(), error.length(), 0);
+		std::stringstream commandStream(line);
+		std::string command;
+		commandStream >> command;
+
+		Client *client = getClient(fd);
+		if (!client)
 			return 0;
+
+		if (command == "CAP") {
+			std::string subcommand;
+			commandStream >> subcommand;
+			if (subcommand == "LS") {
+				std::string nickname = client->getNick();
+				if (nickname.empty())
+					nickname = "*"; // RFC fallback
+		
+				std::string capList = "multi-prefix sasl"; // IRCv3 capabilities
+				std::string capResponse = "CAP " + nickname + " LS :" + capList + "\r\n";
+				send(fd, capResponse.c_str(), capResponse.length(), 0);
+		
+				#if DEBUG
+					std::cout << "[DBG]CAP LS response sent to client " << fd << ": " << capResponse << std::endl;
+				#endif
+			}
 		}
-	
-		// Sending to a channel
-		if (target[0] == '#') {
-			// Broadcast to all users in channel except sender
-			for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-				if ((*it)->getFd() != fd) {
-					std::string message = ":" + client->getNick() + "!" + client->getUser() + "@localhost PRIVMSG " + target + " :" + msg_body + "\r\n";
-					send((*it)->getFd(), message.c_str(), message.length(), 0);
-				}
+
+		else if (command == "PASS") {
+			#if DEBUG
+				std::cout << "[DBG]Setting password for client " << fd << std::endl;
+			#endif
+			client->setPasswd(line);
+		}
+
+		else if (command == "NICK") {
+			std::string nickname;
+			commandStream >> nickname;
+			client->setNick(nickname);
+			#if DEBUG
+		   		std::cout << "[DBG]Client " << fd << " set nickname to " << nickname << std::endl;
+			#endif
+		}
+
+		else if (command == "USER") {
+			std::string username;
+			commandStream >> username;
+			client->setUser(username);
+			#if DEBUG
+				std::cout << "[DBG]Client " << fd << " set username to " << username << std::endl;
+			#endif
+
+			if (!client->getNick().empty() && !client->getUser().empty()) {
+				// Welcome message
+				std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to " + _serverName + ", " + client->getNick() + "\r\n";
+				send(fd, welcome.c_str(), welcome.length(), 0);
+
+				// Host information
+				std::string hostInfo = ":localhost 002 :Your host is " + _serverName + ", running version 1.0\r\n";
+				send(fd, hostInfo.c_str(), hostInfo.length(), 0);
+
+				// Server creation date
+				std::string creationDate = ":localhost 003 :This server was created " + _creationDate + "\r\n";
+				send(fd, creationDate.c_str(), creationDate.length(), 0);
+
+				// Server capabilities
+				std::string capabilities = ":localhost 004 " + client->getNick() + " 1.0 :Available user modes: io, channel modes: tkl\r\n";
+				send(fd, capabilities.c_str(), capabilities.length(), 0);
+
+				// Message of the day (MOTD)
+				std::string motdStart = ":localhost 375 " + client->getNick() + " :- Server Message of the day -\r\n";
+				send(fd, motdStart.c_str(), motdStart.length(), 0);
+
+				std::string motd = ":localhost 372 " + client->getNick() + " : Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n";
+				send(fd, motd.c_str(), motd.length(), 0);
+
+				#if DEBUG
+					std::cout << "[DBG]Sent full welcome sequence to client " << fd << std::endl;
+				#endif
 			}
-		} else {
-			// Direct message to user
-			for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-				if ((*it)->getNick() == target) {
-					std::string message = ":" + client->getNick() + "!" + client->getUser() + "@localhost PRIVMSG " + target + " :" + msg_body + "\r\n";
-					send((*it)->getFd(), message.c_str(), message.length(), 0);
-					return 0;
-				}
-			}
-			std::string error = "401 " + client->getNick() + " " + target + " :No such nick/channel\r\n";
-			send(fd, error.c_str(), error.length(), 0);
+		}
+
+		else if (command == "QUIT") {
+			#if DEBUG
+				std::cout << "[DBG]Client " << fd << " disconnected" << std::endl;
+			#endif
+			close(fd);
+			return 0; // Prevent server shutdown
+		}
+
+		else {
+			#if DEBUG
+				std::cout << "[DBG]Unknown command: " << command << std::endl;
+			#endif
 		}
 	}
- 	
-	else {
-		std::cout << "[DBG]Unknown command: " << command << std::endl;
-	}
+
 	return 0;
 }
-
-
 
 Client *Server::getClient(int fd)
 {
