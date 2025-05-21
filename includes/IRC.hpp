@@ -15,11 +15,15 @@
 #include <sstream>
 #include <algorithm>
 #include <vector>
+#include <csignal>
 
 #include <Messages.hpp>
 #include "Server.hpp"
 #include "Client.hpp"
 #include "Channel.hpp"
+
+class Server;
+extern Server *g_server;
 
 #define MAX_CLIENTS 1024
 

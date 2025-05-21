@@ -5,27 +5,35 @@
 
 #define MAX_CLIENTS 1024
 
-Server::Server() {}
+Server::Server() {
+	_nfds = 1;
+}
 
 Server::Server(Server const &other) {
-	(void)other;
+	_nfds = other._nfds;
 }
 
 Server &Server::operator=(Server const &other) {
-	(void)other;
+	if (this != &other) {
+		_nfds = other._nfds;
+		_clients = other._clients;
+		_channels = other._channels;
+	}
 	return *this;
 }
 
 Server::~Server() {}
 
+int Server::getServerFd(void) const {
+	return _server_fd;
+}
 void Server::start() {
-	int server_fd, client_fd;
 	struct sockaddr_in server_addr;
 	//socklen_t client_addr_len = sizeof(sockaddr_in);
 	int port = 6667;
 
-	server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_fd < 0) {
+	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (_server_fd < 0) {
 		perror("socket");
 		return;
 	}
@@ -35,64 +43,76 @@ void Server::start() {
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
 
-	if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+	if (bind(_server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
 		perror("bind");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
-	if (listen(server_fd, 5) < 0) {
+	if (listen(_server_fd, 5) < 0) {
 		perror("listen");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
 	std::cout << "Server listening on port " << port << std::endl;
 
 	struct pollfd fds[MAX_CLIENTS];
-	fds[0].fd = server_fd;
+	fds[0].fd = _server_fd;
 	fds[0].events = POLLIN;
 
-	int nfds = 1;
 
 	while (1) {
-		int activity = poll(fds, nfds, -1);
+		int activity = poll(fds, _nfds, -1);
 		if (activity < 0) {
 			perror("poll");
 			break;
 		}
-
-		// Accept new client
-		if (fds[0].revents & POLLIN) {
-			client_fd = accept(server_fd, NULL, NULL);
-			if (nfds < MAX_CLIENTS) {
-				fds[nfds].fd = client_fd;
-				fds[nfds].events = POLLIN;
-				nfds++;
-
-				Client *new_client = new Client(client_fd);
-				_clients.push_back(new_client);
-			} else {
-				close(client_fd);
-			}
-		}
-
+		signal(SIGINT, handleSIGINT);
+		if (fds[0].revents & POLLIN)
+			acceptNewClient(fds);
 		// Handle client data
-		for (int i = 1; i < nfds; i++) {
-			if (fds[i].revents & POLLIN) {
-				char buffer[1024];
-				int bytes = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
-				if (bytes <= 0) {
-					close(fds[i].fd);
-					fds[i] = fds[nfds - 1];
-					nfds--;
-					i--;
-				} else {
-					std::cout << "Received message from client: " << buffer << std::endl;
-					buffer[bytes] = '\0';
-					if (handleClientMessage(fds[i].fd, buffer) == 1)
-						exit(0);
-				}
+		handleClientData(fds);
+	}
+}
+
+void handleSIGINT(int sig) {
+	std::cout << "Terminate." << std::endl;
+	(void)sig;
+	close(g_server->getServerFd());
+	g_server->closeAllClientFds();
+	exit(0);
+}
+
+void Server::acceptNewClient(struct pollfd fds[]) {
+	int client_fd;
+	client_fd = accept(_server_fd, NULL, NULL);
+	if (_nfds < MAX_CLIENTS) {
+		fds[_nfds].fd = client_fd;
+		fds[_nfds].events = POLLIN;
+		_nfds++;
+
+		Client *new_client = new Client(client_fd);
+		_clients.push_back(new_client);
+	} else {
+		close(client_fd);
+	}
+}
+
+void Server::handleClientData(struct pollfd fds[]) {
+	for (int i = 1; i < _nfds; i++) {
+		if (fds[i].revents & POLLIN) {
+			char buffer[1024];
+			int bytes = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+			if (bytes <= 0) {
+				close(fds[i].fd);
+				fds[i] = fds[_nfds - 1];
+				_nfds--;
+				i--;
+			} else {
+				std::cout << "Received message from client: " << buffer << std::endl;
+				buffer[bytes] = '\0';
+				handleClientMessage(fds[i].fd, buffer);
 			}
 		}
 	}
@@ -107,31 +127,26 @@ int Server::handleClientMessage(int fd, const char *msg)
 	Client *client = getClient(fd);
 	if (!client)
 		return 0;
-
 	if (command == "PASS") {
 		std::cout << "[DBG]Setting password for client " << fd << std::endl;
 		client->setPasswd(msg);
 	}
-
 	else if (command == "NICK") {
 		std::string nickname;
 		ss >> nickname;
 		client->setNick(nickname);
 		std::cout << "[DBG]Client " << fd << " set nickname to " << nickname << std::endl;
 	}
-
 	else if (command == "USER") {
 		std::string username;
 		ss >> username;
 		client->setUser(username);
 		std::cout << "[DBG]Client " << fd << " set username to " << username << std::endl;
-
 		if (!client->getNick().empty() && !client->getUser().empty()) {
 			std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to the IRC server\r\n";
 			send(fd, welcome.c_str(), welcome.length(), 0);
 		}
 	}
-
 	else if (command == "JOIN") {
 		std::string channel;
 		ss >> channel;
@@ -144,11 +159,7 @@ int Server::handleClientMessage(int fd, const char *msg)
 			std::cout << "Client fd: " << (*it)->getFd() << std::endl;
 		}
 	}
-	else if (command == "EXIT") {
-		std::cout << "[DBG]Client " << fd << " disconnected" << std::endl;
-		close(fd);
-		return 1;
-	}else if (command == "PRIVMSG") {
+	else if (command == "PRIVMSG") {
 		std::string target, msg_body;
 		ss >> target;
 		std::getline(ss, msg_body);
@@ -166,7 +177,6 @@ int Server::handleClientMessage(int fd, const char *msg)
 			send(fd, error.c_str(), error.length(), 0);
 			return 0;
 		}
-	
 		// Sending to a channel
 		if (target[0] == '#') {
 			// Broadcast to all users in channel except sender
@@ -189,14 +199,19 @@ int Server::handleClientMessage(int fd, const char *msg)
 			send(fd, error.c_str(), error.length(), 0);
 		}
 	}
- 	
 	else {
 		std::cout << "[DBG]Unknown command: " << command << std::endl;
 	}
 	return 0;
 }
 
-
+void Server::closeAllClientFds() {
+	for (int i = 0; i < _nfds; i++) {
+		if (_clients[i])
+			close(_clients[i]->getFd());
+	}
+	return ;
+}
 
 Client *Server::getClient(int fd)
 {

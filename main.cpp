@@ -9,11 +9,14 @@
 
 #include "IRC.hpp"
 
+Server *g_server = NULL;
+
 int main (int argc, char **argv) {
     (void)argc;
     (void)argv;
-    Server Server;
-    Server.start();
+    Server server;
+    g_server = &server;
+    server.start();
 }
 
 
