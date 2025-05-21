@@ -226,6 +226,144 @@ int Server::handleClientMessage(int fd, const char *msg)
 			return 0; // Prevent server shutdown
 		}
 
+		else if (command == "MODE") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (channelName.empty()) {
+				// Send error: no channel specified
+				return 0;
+			}
+		
+			Channel* channel = getChannel(channelName);
+			if (!channel) {
+				// Send error: no such channel
+				return 0;
+			}
+		
+			std::string modeChange;
+			commandStream >> modeChange;
+		
+			if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
+				// Invalid mode format
+				return 0;
+			}
+		
+			char mode = modeChange[1];  // Assuming format is +o or -o
+			if (mode != 'o') {
+				// Handle other modes or ignore
+				return 0;
+			}
+		
+			std::string targetNick;
+			commandStream >> targetNick;
+			if (targetNick.empty()) {
+				// Send error: no nickname given
+				return 0;
+			}
+		
+			Client* targetClient = NULL;
+			for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+				if ((*it)->getNick() == targetNick) {
+					targetClient = *it;
+					break;
+				}
+			}
+			if (!targetClient) {
+				// Send error: no such nick
+				return 0;
+			}
+		
+			// Check if the sender is an operator in the channel
+			if (!channel->isOperator(client)) {
+				// Send error: you must be an operator to change modes
+				return 0;
+			}
+		
+			if (modeChange[0] == '+') {
+				// Add operator status
+				channel->addOperator(targetClient);
+				// Notify channel about the mode change
+				std::string msg = ":" + client->getNick() + " MODE " + channelName + " +o " + targetNick + "\r\n";
+				// Broadcast to all clients in channel
+				for (size_t i = 0; i < channel->getClients().size(); ++i) {
+					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+				}
+			} else if (modeChange[0] == '-') {
+				// Remove operator status
+				channel->removeOperator(targetClient);
+				// Notify channel about the mode change
+				std::string msg = ":" + client->getNick() + " MODE " + channelName + " -o " + targetNick + "\r\n";
+				for (size_t i = 0; i < channel->getClients().size(); ++i) {
+					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+				}
+			}
+		}
+
+		else if (command == "TOPIC") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (channelName.empty()) {
+				// Send error: No channel specified (ERR_NEEDMOREPARAMS 461)
+				std::string err = ":server 461 " + client->getNick() + " TOPIC :Not enough parameters\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				continue;
+			}
+		
+			Channel* channel = getChannel(channelName);
+			if (!channel) {
+				// Send error: No such channel (ERR_NOSUCHCHANNEL 403)
+				std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				continue;
+			}
+		
+			// Check if there is a new topic to set (after a colon)
+			std::string restOfLine;
+			std::getline(commandStream, restOfLine);
+			if (!restOfLine.empty()) {
+				// Remove leading spaces and the colon if present
+				size_t pos = restOfLine.find_first_not_of(" ");
+				if (pos != std::string::npos)
+					restOfLine = restOfLine.substr(pos);
+				if (!restOfLine.empty() && restOfLine[0] == ':')
+					restOfLine = restOfLine.substr(1);
+		
+				// Only allow topic change if the client is operator in the channel
+				if (!channel->isOperator(client)) {
+					// Send error: you must be channel operator (ERR_CHANOPRIVSNEEDED 482)
+					std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Set the new topic
+				channel->setTopic(restOfLine);
+		
+				// Broadcast the topic change to all clients in the channel
+				std::string topicMsg = ":" + client->getNick() + " TOPIC " + channelName + " :" + restOfLine + "\r\n";
+				const std::vector<Client*>& clients = channel->getClients();
+				for (size_t i = 0; i < clients.size(); ++i) {
+					send(clients[i]->getFd(), topicMsg.c_str(), topicMsg.length(), 0);
+				}
+			}
+			else {
+				// No topic argument - reply with current topic or no topic message
+				std::string topic = channel->getTopic();
+				if (topic.empty()) {
+					// RPL_NOTOPIC (331)
+					std::string msg = ":server 331 " + client->getNick() + " " + channelName + " :No topic is set\r\n";
+					send(fd, msg.c_str(), msg.length(), 0);
+				} else {
+					// RPL_TOPIC (332)
+					std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+					send(fd, msg.c_str(), msg.length(), 0);
+				}
+			}
+		}
+		
+
 		else {
 			#if DEBUG
 				std::cout << "[DBG]Unknown command: " << command << std::endl;
