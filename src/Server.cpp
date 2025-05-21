@@ -15,6 +15,7 @@ Server::Server() {
 	_creationDate = buffer;
 
 	_serverName = "42_ft_IRC";
+	_serverVersion = "1.0";
 }
 
 Server::Server(Server const &other) {
@@ -41,9 +42,9 @@ void Server::start() {
 
 	// Set SO_REUSEADDR to allow immediate reuse of the port
 	int opt = 1;
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
@@ -178,26 +179,26 @@ int Server::handleClientMessage(int fd, const char *msg)
 
 			if (!client->getNick().empty() && !client->getUser().empty()) {
 				// Welcome message
-				std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to " + _serverName + ", " + client->getNick() + "\r\n";
+				std::string welcome = RPL_WELCOME(client->getNick(), _serverName);
 				send(fd, welcome.c_str(), welcome.length(), 0);
 
 				// Host information
-				std::string hostInfo = ":localhost 002 :Your host is " + _serverName + ", running version 1.0\r\n";
+				std::string hostInfo = RPL_YOURHOST(_serverName);
 				send(fd, hostInfo.c_str(), hostInfo.length(), 0);
 
 				// Server creation date
-				std::string creationDate = ":localhost 003 :This server was created " + _creationDate + "\r\n";
+				std::string creationDate = RPL_CREATED(_creationDate);
 				send(fd, creationDate.c_str(), creationDate.length(), 0);
 
 				// Server capabilities
-				std::string capabilities = ":localhost 004 " + client->getNick() + " 1.0 :Available user modes: io, channel modes: tkl\r\n";
+				std::string capabilities = RPL_MYINFO(_serverName, client->getNick(), _serverVersion);
 				send(fd, capabilities.c_str(), capabilities.length(), 0);
 
 				// Message of the day (MOTD)
-				std::string motdStart = ":localhost 375 " + client->getNick() + " :- Server Message of the day -\r\n";
+				std::string motdStart = RPL_MOTDSTART(client->getNick());
 				send(fd, motdStart.c_str(), motdStart.length(), 0);
 
-				std::string motd = ":localhost 372 " + client->getNick() + " : Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n";
+				std::string motd = RPL_MOTD(client->getNick());
 				send(fd, motd.c_str(), motd.length(), 0);
 
 				#if DEBUG
