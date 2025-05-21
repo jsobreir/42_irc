@@ -13,8 +13,10 @@ class Server {
 		std::vector<Channel *> _channels;
 		int _nfds;
 		int _server_fd;
+		std::vector<Channel> _channels;
 		std::string _creationDate;
 		std::string _serverName;
+		std::string _serverVersion;
 	public:
 		Server ();
 		Server (Server const &other);

@@ -2,7 +2,6 @@
 #include "Client.hpp"
 #include "IRC.hpp"
 
-
 #define MAX_CLIENTS 1024
 
 Server::Server() {
@@ -17,6 +16,7 @@ Server::Server() {
 	_creationDate = buffer;
 
 	_serverName = "42_ft_IRC";
+	_serverVersion = "1.0";
 }
 
 Server::Server(Server const &other) {
@@ -199,30 +199,42 @@ int Server::handleClientMessage(int fd, const char *msg)
 
 			if (!client->getNick().empty() && !client->getUser().empty()) {
 				// Welcome message
-				std::string welcome = ":localhost 001 " + client->getNick() + " :Welcome to " + _serverName + ", " + client->getNick() + "\r\n";
+				std::string welcome = RPL_WELCOME(client->getNick(), _serverName);
 				send(fd, welcome.c_str(), welcome.length(), 0);
 
 				// Host information
-				std::string hostInfo = ":localhost 002 :Your host is " + _serverName + ", running version 1.0\r\n";
+				std::string hostInfo = RPL_YOURHOST(_serverName);
 				send(fd, hostInfo.c_str(), hostInfo.length(), 0);
 
 				// Server creation date
-				std::string creationDate = ":localhost 003 :This server was created " + _creationDate + "\r\n";
+				std::string creationDate = RPL_CREATED(_creationDate);
 				send(fd, creationDate.c_str(), creationDate.length(), 0);
 
 				// Server capabilities
-				std::string capabilities = ":localhost 004 " + client->getNick() + " 1.0 :Available user modes: io, channel modes: tkl\r\n";
+				std::string capabilities = RPL_MYINFO(_serverName, client->getNick(), _serverVersion);
 				send(fd, capabilities.c_str(), capabilities.length(), 0);
 
 				// Message of the day (MOTD)
-				std::string motdStart = ":localhost 375 " + client->getNick() + " :- Server Message of the day -\r\n";
+				std::string motdStart = RPL_MOTDSTART(client->getNick());
 				send(fd, motdStart.c_str(), motdStart.length(), 0);
 
-				std::string motd = ":localhost 372 " + client->getNick() + " : Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n";
+				std::string motd = RPL_MOTD(client->getNick());
 				send(fd, motd.c_str(), motd.length(), 0);
 
 				#if DEBUG
 					std::cout << "[DBG]Sent full welcome sequence to client " << fd << std::endl;
+				#endif
+			}
+		}
+
+		else if (command == "JOIN") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (!channelName.empty()) {
+				joinChannel(client, channelName);
+				#if DEBUG
+					std::cout << "[DBG]Client " << fd << " joined channel " << channelName << std::endl;
 				#endif
 			}
 		}
@@ -234,6 +246,144 @@ int Server::handleClientMessage(int fd, const char *msg)
 			close(fd);
 			return 0; // Prevent server shutdown
 		}
+
+		else if (command == "MODE") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (channelName.empty()) {
+				// Send error: no channel specified
+				return 0;
+			}
+		
+			Channel* channel = getChannel(channelName);
+			if (!channel) {
+				// Send error: no such channel
+				return 0;
+			}
+		
+			std::string modeChange;
+			commandStream >> modeChange;
+		
+			if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
+				// Invalid mode format
+				return 0;
+			}
+		
+			char mode = modeChange[1];  // Assuming format is +o or -o
+			if (mode != 'o') {
+				// Handle other modes or ignore
+				return 0;
+			}
+		
+			std::string targetNick;
+			commandStream >> targetNick;
+			if (targetNick.empty()) {
+				// Send error: no nickname given
+				return 0;
+			}
+		
+			Client* targetClient = NULL;
+			for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+				if ((*it)->getNick() == targetNick) {
+					targetClient = *it;
+					break;
+				}
+			}
+			if (!targetClient) {
+				// Send error: no such nick
+				return 0;
+			}
+		
+			// Check if the sender is an operator in the channel
+			if (!channel->isOperator(client)) {
+				// Send error: you must be an operator to change modes
+				return 0;
+			}
+		
+			if (modeChange[0] == '+') {
+				// Add operator status
+				channel->addOperator(targetClient);
+				// Notify channel about the mode change
+				std::string msg = ":" + client->getNick() + " MODE " + channelName + " +o " + targetNick + "\r\n";
+				// Broadcast to all clients in channel
+				for (size_t i = 0; i < channel->getClients().size(); ++i) {
+					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+				}
+			} else if (modeChange[0] == '-') {
+				// Remove operator status
+				channel->removeOperator(targetClient);
+				// Notify channel about the mode change
+				std::string msg = ":" + client->getNick() + " MODE " + channelName + " -o " + targetNick + "\r\n";
+				for (size_t i = 0; i < channel->getClients().size(); ++i) {
+					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+				}
+			}
+		}
+
+		else if (command == "TOPIC") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (channelName.empty()) {
+				// Send error: No channel specified (ERR_NEEDMOREPARAMS 461)
+				std::string err = ":server 461 " + client->getNick() + " TOPIC :Not enough parameters\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				continue;
+			}
+		
+			Channel* channel = getChannel(channelName);
+			if (!channel) {
+				// Send error: No such channel (ERR_NOSUCHCHANNEL 403)
+				std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				continue;
+			}
+		
+			// Check if there is a new topic to set (after a colon)
+			std::string restOfLine;
+			std::getline(commandStream, restOfLine);
+			if (!restOfLine.empty()) {
+				// Remove leading spaces and the colon if present
+				size_t pos = restOfLine.find_first_not_of(" ");
+				if (pos != std::string::npos)
+					restOfLine = restOfLine.substr(pos);
+				if (!restOfLine.empty() && restOfLine[0] == ':')
+					restOfLine = restOfLine.substr(1);
+		
+				// Only allow topic change if the client is operator in the channel
+				if (!channel->isOperator(client)) {
+					// Send error: you must be channel operator (ERR_CHANOPRIVSNEEDED 482)
+					std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Set the new topic
+				channel->setTopic(restOfLine);
+		
+				// Broadcast the topic change to all clients in the channel
+				std::string topicMsg = ":" + client->getNick() + " TOPIC " + channelName + " :" + restOfLine + "\r\n";
+				const std::vector<Client*>& clients = channel->getClients();
+				for (size_t i = 0; i < clients.size(); ++i) {
+					send(clients[i]->getFd(), topicMsg.c_str(), topicMsg.length(), 0);
+				}
+			}
+			else {
+				// No topic argument - reply with current topic or no topic message
+				std::string topic = channel->getTopic();
+				if (topic.empty()) {
+					// RPL_NOTOPIC (331)
+					std::string msg = ":server 331 " + client->getNick() + " " + channelName + " :No topic is set\r\n";
+					send(fd, msg.c_str(), msg.length(), 0);
+				} else {
+					// RPL_TOPIC (332)
+					std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+					send(fd, msg.c_str(), msg.length(), 0);
+				}
+			}
+		}
+		
 
 		else {
 			#if DEBUG
@@ -262,25 +412,62 @@ Client *Server::getClient(int fd)
 	}
 	return NULL;
 }
-Channel *Server::getChannel(std::string channelName)
-{
+
+Channel* Server::getChannel(std::string channelName) {
 	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i]->getName() == channelName) {
-			return _channels[i];
+		if (_channels[i].getName() == channelName) {
+			return &_channels[i];
 		}
 	}
 	return NULL;
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
-	if (!getChannel(channelName)) {
+	Channel *channel = getChannel(channelName);
+	if (!channel) {
 		Channel newChannel;
 		newChannel.setName(channelName);
 		newChannel.addClient(client);
-		_channels.push_back(&newChannel);
+		_channels.push_back(newChannel);
+		channel = &_channels.back();
+	} else {
+		channel->addClient(client);
 	}
-	else {
-		getChannel(channelName)->addClient(client);
+
+	// Send the JOIN message itself — this tells the client it has joined the channel
+	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+
+	// Broadcast the JOIN to other clients already in the channel (excluding the joining client)
+	const std::vector<Client*> &clients = channel->getClients();
+	for (size_t i = 0; i < clients.size(); i++) {
+		Client *otherClient = clients[i];
+		if (otherClient != client) {
+			send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+		}
 	}
+
+	// Send RPL_TOPIC (332) - For now no topic, send empty string
+	std::string topic = ""; // You can extend Channel class to store a topic later
+	std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+	// Send RPL_NAMREPLY (353) - List of users
+	std::string userList = "";
+	Client* op = channel->getOperator();  // get operator client pointer
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (i != 0)
+			userList += " ";
+		if (clients[i] == op)
+			userList += "@";  // prefix operator with @
+		userList += clients[i]->getNick();
+	}
+	msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+	// Send RPL_ENDOFNAMES (366)
+	msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
+	send(client->getFd(), msg.c_str(), msg.length(), 0);
 }
 
