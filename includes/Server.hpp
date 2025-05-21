@@ -10,7 +10,7 @@ class Channel;
 class Server {
 	private:
 		std::vector<Client *> _clients;
-		std::vector<Channel *> _channels;
+		std::vector<Channel> _channels;
 		std::string _creationDate;
 		std::string _serverName;
 		std::string _serverVersion;

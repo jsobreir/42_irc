@@ -15,6 +15,7 @@ class Channel {
 		std::string getName() const;
 		void setName(std::string name);
 		void addClient(Client *client);
+		const std::vector<Client*>& getClients() const;
     private:
         std::vector<Client *> _channelClients;
 		std::string _name;

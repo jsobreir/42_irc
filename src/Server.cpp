@@ -207,6 +207,18 @@ int Server::handleClientMessage(int fd, const char *msg)
 			}
 		}
 
+		else if (command == "JOIN") {
+			std::string channelName;
+			commandStream >> channelName;
+		
+			if (!channelName.empty()) {
+				joinChannel(client, channelName);
+				#if DEBUG
+					std::cout << "[DBG]Client " << fd << " joined channel " << channelName << std::endl;
+				#endif
+			}
+		}
+
 		else if (command == "QUIT") {
 			#if DEBUG
 				std::cout << "[DBG]Client " << fd << " disconnected" << std::endl;
@@ -234,25 +246,57 @@ Client *Server::getClient(int fd)
 	}
 	return NULL;
 }
-Channel *Server::getChannel(std::string channelName)
-{
-	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i]->getName() == channelName) {
-			return _channels[i];
-		}
-	}
-	return NULL;
+
+Channel* Server::getChannel(std::string channelName) {
+    for (size_t i = 0; i < _channels.size(); i++) {
+        if (_channels[i].getName() == channelName) {
+            return &_channels[i];
+        }
+    }
+    return NULL;
 }
 
+// void Server::joinChannel(Client *client, const std::string &channelName) {
+//     Channel* channel = getChannel(channelName);
+//     if (!channel) {
+//         Channel newChannel;              // create Channel object
+//         newChannel.setName(channelName);
+//         newChannel.addClient(client);
+//         _channels.push_back(newChannel); // push copy into vector
+//     } else {
+//         channel->addClient(client);
+//     }
+// }
+
 void Server::joinChannel(Client *client, const std::string &channelName) {
-	if (!getChannel(channelName)) {
-		Channel newChannel;
-		newChannel.setName(channelName);
-		newChannel.addClient(client);
-		_channels.push_back(&newChannel);
-	}
-	else {
-		getChannel(channelName)->addClient(client);
-	}
+    Channel *channel = getChannel(channelName);
+    if (!channel) {
+        Channel newChannel;
+        newChannel.setName(channelName);
+        newChannel.addClient(client);
+        _channels.push_back(newChannel);  // Store by value, not pointer
+        channel = &_channels.back();
+    } else {
+        channel->addClient(client);
+    }
+
+    // Send RPL_TOPIC (332) - For now no topic, send empty string
+    std::string topic = ""; // You can extend Channel class to store a topic later
+    std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_NAMREPLY (353) - List of users
+    std::string userList = "";
+    const std::vector<Client*> &clients = channel->getClients(); // Add getter for _channelClients
+    for (size_t i = 0; i < clients.size(); i++) {
+        if (i != 0) userList += " ";
+        userList += clients[i]->getNick();
+    }
+    msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_ENDOFNAMES (366)
+    msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
 }
 
