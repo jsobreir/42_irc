@@ -25,26 +25,26 @@
 
 #define RPL_NOTOPIC(channel) ("331 " + channel + " :No topic is set\n")
 
-#define RPL_TOPIC(channel, topic) (": 332" + channel + " :" + topic + "\r\n")
+#define RPL_TOPIC(channel, topic) ("332" + channel + " :" + topic + "\r\n")
 
-#define RPL_TOPIC2(nickname, channel, topic) (": 332 " + client->getNick() + " " + channel + " :" + topic + + "\r\n")
+#define RPL_TOPIC2(nickname, channel, topic) ("332 " + nickname + " " + channel + " :" + topic + "\r\n")
 
-#define RPL_TOPICWHOTIME(channel, nick, time) (":" + _serverName + " 333 " + client->getNick() + " " + channel + " " + time + "\r\n")
+#define RPL_TOPICWHOTIME(channel, nick, time) (":" + _serverName + " 333 " + client->getNick() + " " + channelName + " " + time + "\r\n")
 
-#define RPL_INVITING(nick, channel) (": 341" + client->getNick() + " " + channel + "\r\n")
+#define RPL_INVITING(nick, channel) ("341" + client->getNick() + " " + channel + "\r\n")
 
 #define RPL_WHOREPLY(nickname, host,  channelname, user, realname, flag) (":" + host + " 352 " + client->getNick() + " " + channelname + " " + host + " " + SERVER_NAME + " " + user + " " + flag + " :2 " + realname + "\r\n")
 
-#define RPL_NAMREPLY(nick, channel, users) (": 353 " + client->getNick() + " = " + channel + " :" + users + "\r\n")
+#define RPL_NAMREPLY(nick, channel, users) ("353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n")
 
-#define RPL_ENDOFNAMES(channel) (": 366 " + channel + " :End of /NAMES list\r\n")
+#define RPL_ENDOFNAMES(channel) ("366 " + channelName + " End of /NAMES list\r\n")
 /*-----------------------------*/
 
 
 /*-------Miscellaneous---------*/
-#define RPL_MOTDSTART(nick) "375 " + client->getNick() + " :- " + _serverName + " Message of the day - \r\n"
-#define RPL_MOTD(nick) "372 " + client->getNick() + " : Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n"
-#define RPL_ENDOFMOTD(nick) "376 " + client->getNick() + ":End of /MOTD command.\r\n"
+#define RPL_MOTDSTART(nick) "375 " + client->getNick() + " - " + _serverName + " Message of the day - \r\n"
+#define RPL_MOTD(nick) "372 " + client->getNick() + "  Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n"
+#define RPL_ENDOFMOTD(nick) "376 " + client->getNick() + "End of /MOTD command.\r\n"
 
 /*-----------------------------*/
 
@@ -75,6 +75,8 @@
 #define ERR_PASSWDMISMATCH "464 :Password incorrect\n"
 
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
+
+#define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 
 #define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
 /*-----------------------------*/

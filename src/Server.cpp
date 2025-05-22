@@ -228,10 +228,80 @@ int Server::handleClientMessage(int fd, const char *msg)
 		}
 
 		else if (command == "JOIN") {
-			std::string channelName;
-			commandStream >> channelName;
+			std::string channels, keys;
+			commandStream >> channels >> keys;
 		
-			if (!channelName.empty()) {
+			if (channels.empty()) {
+				// ERR_NEEDMOREPARAMS (461): Not enough parameters
+				std::string err = ":server 461 " + client->getNick() + " JOIN :Not enough parameters\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				return 0;
+			}
+		
+			std::stringstream channelStream(channels);
+			std::stringstream keyStream(keys);
+			std::string channelName, key;
+		
+			while (std::getline(channelStream, channelName, ',')) {
+				// Trim leading and trailing whitespace
+				size_t start = channelName.find_first_not_of(" ");
+				size_t end = channelName.find_last_not_of(" ");
+				if (start == std::string::npos || end == std::string::npos) {
+					// ERR_NOSUCHCHANNEL (403): Invalid channel name
+					std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+				channelName = channelName.substr(start, end - start + 1);
+		
+				// Validate channel name (e.g., must start with '#')
+				if (channelName[0] != '#') {
+					// ERR_BADCHANMASK (476): Invalid channel mask
+					std::string err = ":server 476 " + client->getNick() + " " + channelName + " :Invalid channel name\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Check if a key is provided for this channel
+				if (std::getline(keyStream, key, ',')) {
+					// Validate the key if necessary (e.g., compare with stored channel key)
+					// TODO: Add key validation logic if required
+				}
+		
+				// Check if the client is banned from the channel
+				Channel* channel = getChannel(channelName);
+				if (channel && channel->isBanned(client)) {
+					// ERR_BANNEDFROMCHAN (474): Banned from channel
+					std::string err = ":server 474 " + client->getNick() + " " + channelName + " :You are banned from this channel\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Check if the channel is full
+				if (channel && channel->isFull()) {
+					// ERR_CHANNELISFULL (471): Channel is full
+					std::string err = ":server 471 " + client->getNick() + " " + channelName + " :Channel is full\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Check if the channel is invite-only
+				if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
+					// ERR_INVITEONLYCHAN (473): Invite-only channel
+					std::string err = ":server 473 " + client->getNick() + " " + channelName + " :Cannot join channel (invite-only)\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Check if the client has exceeded the channel limit
+				if (client->getChannelCount() >= MAX_CHANNELS) {
+					// ERR_TOOMANYCHANNELS (405): Too many channels
+					std::string err = ":server 405 " + client->getNick() + " " + channelName + " :You have joined too many channels\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					continue;
+				}
+		
+				// Join the channel
 				joinChannel(client, channelName);
 				#if DEBUG
 					std::cout << "[DBG]Client " << fd << " joined channel " << channelName << std::endl;
@@ -383,7 +453,51 @@ int Server::handleClientMessage(int fd, const char *msg)
 				}
 			}
 		}
+
+		else if (command == "PRIVMSG") {
+			std::string target;
+			commandStream >> target;
 		
+			std::string message;
+			std::getline(commandStream, message);
+		
+			// Trim leading whitespace from the message
+			size_t pos = message.find_first_not_of(" ");
+			if (pos != std::string::npos) {
+				message = message.substr(pos);
+			}
+		
+			#if DEBUG
+				std::cout << "[DBG] PRIVMSG - target: " << target << std::endl;
+				std::cout << "[DBG] PRIVMSG - message: <" << message << ">" << std::endl;
+			#endif		
+		
+			if (!message.empty() && message[0] == ':') {
+				#if DEBUG
+					std::cout << "[DBG] PRIVMSG - Removing leading colon from message" << std::endl;
+				#endif
+				message = message.substr(1); // Remove leading colon
+			}
+		
+			if (target[0] == '#') {
+				Channel *channel = getChannel(target);
+				if (!channel) {
+					// TODO - Send error: no such channel
+					return 0;
+				}
+		
+				// Construct the full message
+				std::string fullMsg = ":" + client->getNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+		
+				// Broadcast to all clients in the channel **except the sender**
+				std::vector<Client *> channelClients = channel->getClients();
+				for (size_t i = 0; i < channelClients.size(); ++i) {
+					if (channelClients[i]->getFd() != fd) {
+						send(channelClients[i]->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
+					}
+				}
+			}
+		}
 
 		else {
 			#if DEBUG
@@ -423,51 +537,71 @@ Channel* Server::getChannel(std::string channelName) {
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
-	Channel *channel = getChannel(channelName);
-	if (!channel) {
-		Channel newChannel;
-		newChannel.setName(channelName);
-		newChannel.addClient(client);
-		_channels.push_back(&newChannel);
-		// channel = &_channels.back();
-	} else {
-		channel->addClient(client);
-	}
 
-	// Send the JOIN message itself — this tells the client it has joined the channel
-	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
-	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+    // Check for leading or trailing whitespace
+    if (channelName.empty() || channelName.find_first_of(" ") == 0 || channelName.find_last_of(" ") == channelName.size() - 1) {
+        std::string err = ":server " + ERR_BADCHANMASK(channelName);
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return;
+    }
 
-	// Broadcast the JOIN to other clients already in the channel (excluding the joining client)
-	const std::vector<Client*> &clients = channel->getClients();
-	for (size_t i = 0; i < clients.size(); i++) {
-		Client *otherClient = clients[i];
-		if (otherClient != client) {
-			send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
-		}
-	}
+    // Validate channel name (e.g., must start with '#' and have more than just '#')
+    if (channelName[0] != '#' || channelName.size() == 1) {
+        std::string err = ":server " + ERR_BADCHANMASK(channelName);
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return;
+    }
 
-	// Send RPL_TOPIC (332) - For now no topic, send empty string
-	std::string topic = ""; // You can extend Channel class to store a topic later
-	std::string msg = ":server 332 " + client->getNick() + " " + channelName + " :" + topic + "\r\n";
-	send(client->getFd(), msg.c_str(), msg.length(), 0);
+    // Check if the channel already exists
+    Channel *channel = getChannel(channelName);
+    if (!channel) {
+        // Create a new channel
+        Channel newChannel;
+        newChannel.setName(channelName);
+        newChannel.addClient(client);
+        _channels.push_back(newChannel);
+        channel = &_channels.back();
+    } else {
+        // Add the client to the existing channel
+        channel->addClient(client);
+    }
 
-	// Send RPL_NAMREPLY (353) - List of users
-	std::string userList = "";
-	Client* op = channel->getOperator();  // get operator client pointer
-	for (size_t i = 0; i < clients.size(); i++) {
-		if (i != 0)
-			userList += " ";
-		if (clients[i] == op)
-			userList += "@";  // prefix operator with @
-		userList += clients[i]->getNick();
-	}
-	msg = ":server 353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n";
-	send(client->getFd(), msg.c_str(), msg.length(), 0);
+	// Increment the client's joined channels count
+	client->incrementJoinedChannels();
+	
+    // Send the JOIN message itself — this tells the client it has joined the channel
+    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
-	// Send RPL_ENDOFNAMES (366)
-	msg = ":server 366 " + client->getNick() + " " + channelName + " :End of /NAMES list\r\n";
-	send(client->getFd(), msg.c_str(), msg.length(), 0);
+    // Broadcast the JOIN to other clients already in the channel (excluding the joining client)
+    const std::vector<Client*> &clients = channel->getClients();
+    for (size_t i = 0; i < clients.size(); i++) {
+        Client *otherClient = clients[i];
+        if (otherClient != client) {
+            send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+        }
+    }
+
+    // Send RPL_TOPIC (332) - For now no topic, send empty string
+    std::string topic = channel->getTopic(); // You can extend Channel class to store a topic later
+    std::string msg = ":server " + RPL_TOPIC2(client->getNick(), channelName, topic);
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_NAMREPLY (353) - List of users
+    std::string userList = "";
+    Client* op = channel->getOperator();  // get operator client pointer
+    for (size_t i = 0; i < clients.size(); i++) {
+        if (i != 0)
+            userList += " ";
+        if (clients[i] == op)
+            userList += "@";  // prefix operator with @
+        userList += clients[i]->getNick();
+    }
+    msg = ":server " + RPL_NAMREPLY(client->getNick(), channelName, userList);
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+    // Send RPL_ENDOFNAMES (366)
+    msg = ":server " + RPL_ENDOFNAMES(channelName);
+    send(client->getFd(), msg.c_str(), msg.length(), 0);
 }
-
