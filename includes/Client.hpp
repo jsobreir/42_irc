@@ -20,9 +20,12 @@ class Client {
 		void setUser(std::string user);
 		std::string getNick() const;
 		std::string getUser() const;
-
 		void setAuthenticated(bool value);
 		bool isAuthenticated() const;
+		size_t getChannelCount() const;
+		void incrementJoinedChannels();
+		void decrementJoinedChannels();
+
 
 	private:
 		int _fd;
@@ -31,8 +34,7 @@ class Client {
 		std::string _nick;
 		std::string _user;
 		bool _authenticated; 
+		size_t _joinedChannels;
 };
-
-
 
 #endif

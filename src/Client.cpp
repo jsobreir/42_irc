@@ -1,17 +1,22 @@
 #include "Client.hpp"
 
-Client::Client () {
+Client::Client () : _joinedChannels(0){
 
 }
 
-Client::Client (int fd) {
+Client::Client (int fd) : _joinedChannels(0){
 	_fd = fd;
 }
 
-Client::Client (Client const &other) {
-	(void)other;
-}
+Client::Client(Client const &other) {
 
+    _fd = other._fd;
+    _received_passwd = other._received_passwd;
+    _password = other._password;
+    _nick = other._nick;
+    _user = other._user;
+    _joinedChannels = other._joinedChannels;
+}
 
 int Client::getFd() const {
     return _fd;
@@ -61,3 +66,17 @@ std::string Client::getUser() const
 	return _user;
 }
 
+void Client::incrementJoinedChannels()
+{
+	_joinedChannels++;
+}
+
+void Client::decrementJoinedChannels()
+{
+	_joinedChannels--;
+}
+
+size_t Client::getChannelCount() const
+{
+	return _joinedChannels;
+}
