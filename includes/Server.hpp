@@ -3,14 +3,13 @@
 
 #include "IRC.hpp"
 
-
 class Client;
 class Channel;
 
 class Server {
 	private:
 		std::vector<Client *> _clients;
-		std::vector<Channel> _channels;
+		std::vector<Channel *> _channels;
 		int _nfds;
 		int _server_fd;
 		std::string _creationDate;
@@ -26,11 +25,20 @@ class Server {
 		void acceptNewClient(struct pollfd fds[]);
 		void handleClientData(struct pollfd fds[]);
 		int handleClientMessage(int client_fd, const char *msg);
+		void sendCMD(int fd, std::string msg);
 		void closeAllClientFds(void);
 		Client *getClient(int fd);
 		Channel *getChannel(std::string channelName);
-		void joinChannel(Client *client, const std::string &channelName);
+		void 	joinChannel(Client *client, const std::string &channelName);
+		int 	handleCapCMD(IRCCommand cmd, Client *client);
+		int 	handlePassCMD(IRCCommand cmd, Client *client);
+		int 	handleNickCMD(IRCCommand cmd, Client *client);
+		int 	handleUserCMD(IRCCommand cmd, Client *client);
+		int		handleJoinCMD(IRCCommand cmd, Client *client);
+		int 	handleQuitCMD(IRCCommand cmd, Client *client);
+		int 	handlePrivMsgCMD(IRCCommand cmd, Client *client);
 };
 
-void handleSIGINT(int sig);
+void 	handleSIGINT(int sig);
+
 #endif

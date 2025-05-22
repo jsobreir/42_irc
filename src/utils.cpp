@@ -16,10 +16,10 @@ IRCCommand parseIRCLine(const std::string &line) {
             std::getline(ss, rest);
             trailing += rest;
             // Trim trailing spaces if needed
-            result.params.push_back(trailing);
+            result.args.push_back(trailing);
             break;
         }
-        result.params.push_back(token);
+        result.args.push_back(token);
     }
     return result;
 }
