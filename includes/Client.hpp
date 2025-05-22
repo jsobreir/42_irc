@@ -19,14 +19,17 @@ class Client {
 		void setUser(std::string user);
 		std::string getNick() const;
 		std::string getUser() const;
+		size_t getChannelCount() const;
+		void incrementJoinedChannels();
+		void decrementJoinedChannels();
+
     private:
         int _fd;
         bool _received_passwd;
         std::string _password;
 		std::string _nick;
 		std::string _user;
-		//Channel	*_channel;
+		size_t _joinedChannels;
 } ;
-
 
 #endif

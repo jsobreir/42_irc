@@ -12,6 +12,7 @@ class Channel {
 		Channel (Channel const &other);
 		Channel &operator=(Channel const &other);
 		~Channel();
+
 		std::string getName() const;
 		void setName(std::string name);
 		void addClient(Client *client);
@@ -39,10 +40,22 @@ class Channel {
 	
 		bool hasClient(Client* client) const;
 		void removeClient(Client* client);
+
+        bool isBanned(Client* client) const;
+        void banClient(const std::string& nickname);
+        void unbanClient(const std::string& nickname);
+
+        bool isFull() const;
+
+        bool isInvited(Client* client) const;
+        void inviteClient(const std::string& nickname);
+        void revokeInvite(const std::string& nickname);
     private:
     std::vector<Client *> _channelClients;
-    std::string _name;
     std::vector<Client*> _operators;
+	std::vector<std::string> _bannedClients;
+	std::vector<std::string> _invitedClients;
+    std::string _name;
     std::string _topic;
     bool _inviteOnly;
     bool _topicOnlyOps;

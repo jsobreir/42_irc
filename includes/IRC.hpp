@@ -24,6 +24,7 @@
 #include "Channel.hpp"
 
 #define MAX_CLIENTS 1024
+#define MAX_CHANNELS 1024
 #define DEBUG 0
 
 #endif

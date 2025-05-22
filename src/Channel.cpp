@@ -161,3 +161,35 @@ Client* Channel::getOperator() const {
         return _operators[0];
     return NULL; // or nullptr in C++11+
 }
+
+bool Channel::isBanned(Client* client) const {
+    return std::find(_bannedClients.begin(), _bannedClients.end(), client->getNick()) != _bannedClients.end();
+}
+
+void Channel::banClient(const std::string& nickname) {
+    if (std::find(_bannedClients.begin(), _bannedClients.end(), nickname) == _bannedClients.end()) {
+        _bannedClients.push_back(nickname);
+    }
+}
+
+void Channel::unbanClient(const std::string& nickname) {
+    _bannedClients.erase(std::remove(_bannedClients.begin(), _bannedClients.end(), nickname), _bannedClients.end());
+}
+
+bool Channel::isFull() const {
+    return _userLimit > 0 && _channelClients.size() >= _userLimit;
+}
+
+bool Channel::isInvited(Client* client) const {
+    return std::find(_invitedClients.begin(), _invitedClients.end(), client->getNick()) != _invitedClients.end();
+}
+
+void Channel::inviteClient(const std::string& nickname) {
+    if (std::find(_invitedClients.begin(), _invitedClients.end(), nickname) == _invitedClients.end()) {
+        _invitedClients.push_back(nickname);
+    }
+}
+
+void Channel::revokeInvite(const std::string& nickname) {
+    _invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), nickname), _invitedClients.end());
+}
