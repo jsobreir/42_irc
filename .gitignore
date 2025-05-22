@@ -1,8 +1,6 @@
+*.o
+obj/
 # Ignore the executable
 IRC
-
-# Ignore the object files directory
-Objs/
-
 # Ignore the .vscode directory
 .vscode/

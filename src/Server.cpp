@@ -5,6 +5,8 @@
 #define MAX_CLIENTS 1024
 
 Server::Server() {
+	_nfds = 1;
+
 	std::time_t now = std::time(0);
 	struct tm *ltm = std::localtime(&now);
 
@@ -18,23 +20,29 @@ Server::Server() {
 }
 
 Server::Server(Server const &other) {
-	(void)other;
+	_nfds = other._nfds;
 }
 
 Server &Server::operator=(Server const &other) {
-	(void)other;
+	if (this != &other) {
+		_nfds = other._nfds;
+		_clients = other._clients;
+		_channels = other._channels;
+	}
 	return *this;
 }
 
 Server::~Server() {}
 
+int Server::getServerFd(void) const {
+	return _server_fd;
+}
 void Server::start() {
-	int server_fd, client_fd;
 	struct sockaddr_in server_addr;
 	int port = 6667;
 
-	server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_fd < 0) {
+	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (_server_fd < 0) {
 		perror("socket");
 		return;
 	}
@@ -52,63 +60,76 @@ void Server::start() {
 	server_addr.sin_addr.s_addr = INADDR_ANY;
 	server_addr.sin_port = htons(port);
 
-	if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+	if (bind(_server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
 		perror("bind");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
-	if (listen(server_fd, 5) < 0) {
+	if (listen(_server_fd, 5) < 0) {
 		perror("listen");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
 	std::cout << "Server listening on port " << port << std::endl;
 
 	struct pollfd fds[MAX_CLIENTS];
-	fds[0].fd = server_fd;
+	fds[0].fd = _server_fd;
 	fds[0].events = POLLIN;
 
-	int nfds = 1;
 
 	while (1) {
-		int activity = poll(fds, nfds, -1);
+		int activity = poll(fds, _nfds, -1);
 		if (activity < 0) {
 			perror("poll");
 			break;
 		}
-
-		// Accept new client
-		if (fds[0].revents & POLLIN) {
-			client_fd = accept(server_fd, NULL, NULL);
-			if (nfds < MAX_CLIENTS) {
-				fds[nfds].fd = client_fd;
-				fds[nfds].events = POLLIN;
-				nfds++;
-
-				Client *new_client = new Client(client_fd);
-				_clients.push_back(new_client);
-			} else {
-				close(client_fd);
-			}
-		}
-
+		signal(SIGINT, handleSIGINT);
+		if (fds[0].revents & POLLIN)
+			acceptNewClient(fds);
 		// Handle client data
-		for (int i = 1; i < nfds; i++) {
-			if (fds[i].revents & POLLIN) {
-				char buffer[1024];
-				int bytes = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
-				if (bytes <= 0) {
-					close(fds[i].fd);
-					fds[i] = fds[nfds - 1];
-					nfds--;
-					i--;
-				} else {
-					std::cout << "Received message from client: " << buffer << std::endl;
-					buffer[bytes] = '\0';
-					handleClientMessage(fds[i].fd, buffer);
-				}
+		handleClientData(fds);
+	}
+}
+
+void handleSIGINT(int sig) {
+	std::cout << "Terminate." << std::endl;
+	(void)sig;
+	close(g_server->getServerFd());
+	g_server->closeAllClientFds();
+	exit(0);
+}
+
+void Server::acceptNewClient(struct pollfd fds[]) {
+	int client_fd;
+	client_fd = accept(_server_fd, NULL, NULL);
+	if (_nfds < MAX_CLIENTS) {
+		fds[_nfds].fd = client_fd;
+		fds[_nfds].events = POLLIN;
+		_nfds++;
+
+		Client *new_client = new Client(client_fd);
+		_clients.push_back(new_client);
+	} else {
+		close(client_fd);
+	}
+}
+
+void Server::handleClientData(struct pollfd fds[]) {
+	for (int i = 1; i < _nfds; i++) {
+		if (fds[i].revents & POLLIN) {
+			char buffer[1024];
+			int bytes = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
+			if (bytes <= 0) {
+				close(fds[i].fd);
+				fds[i] = fds[_nfds - 1];
+				_nfds--;
+				i--;
+			} else {
+				std::cout << "Received message from client: " << buffer << std::endl;
+				buffer[bytes] = '\0';
+				handleClientMessage(fds[i].fd, buffer);
 			}
 		}
 	}
@@ -486,6 +507,14 @@ int Server::handleClientMessage(int fd, const char *msg)
 	}
 
 	return 0;
+}
+
+void Server::closeAllClientFds() {
+	for (int i = 0; i < _nfds; i++) {
+		if (_clients[i])
+			close(_clients[i]->getFd());
+	}
+	return ;
 }
 
 Client *Server::getClient(int fd)
