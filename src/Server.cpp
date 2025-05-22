@@ -49,9 +49,9 @@ void Server::start() {
 
 	// Set SO_REUSEADDR to allow immediate reuse of the port
 	int opt = 1;
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
-		close(server_fd);
+		close(_server_fd);
 		return;
 	}
 
@@ -415,8 +415,8 @@ Client *Server::getClient(int fd)
 
 Channel* Server::getChannel(std::string channelName) {
 	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i].getName() == channelName) {
-			return &_channels[i];
+		if (_channels[i]->getName() == channelName) {
+			return _channels[i];
 		}
 	}
 	return NULL;
@@ -428,8 +428,8 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 		Channel newChannel;
 		newChannel.setName(channelName);
 		newChannel.addClient(client);
-		_channels.push_back(newChannel);
-		channel = &_channels.back();
+		_channels.push_back(&newChannel);
+		// channel = &_channels.back();
 	} else {
 		channel->addClient(client);
 	}
