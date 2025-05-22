@@ -26,7 +26,12 @@ Server &Server::operator=(Server const &other) {
 	return *this;
 }
 
-Server::~Server() {}
+Server::~Server() {
+    for (size_t i = 0; i < _channels.size(); ++i) {
+        delete _channels[i];
+    }
+    _channels.clear();
+}
 
 void Server::start() {
 	int server_fd, client_fd;
@@ -296,160 +301,87 @@ int Server::handleClientMessage(int fd, const char *msg)
 			return 0; // Prevent server shutdown
 		}
 
-		// else if (command == "MODE") {
-		// 	std::string channelName;
-		// 	commandStream >> channelName;
-		
-		// 	if (channelName.empty()) {
-		// 		// TODO - Send error: no channel specified
-		// 		return 0;
-		// 	}
-		
-		// 	Channel* channel = getChannel(channelName);
-		// 	if (!channel) {
-		// 		// TODO - Send error: no such channel
-		// 		return 0;
-		// 	}
-		
-		// 	std::string modeChange;
-		// 	commandStream >> modeChange;
-		
-		// 	if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
-		// 		// TODO - Invalid mode format
-		// 		return 0;
-		// 	}
-		
-		// 	char mode = modeChange[1];  // Assuming format is +o or -o
-		// 	if (mode != 'o') {
-		// 		// Handle other modes or ignore
-		// 		return 0;
-		// 	}
-		
-		// 	std::string targetNick;
-		// 	commandStream >> targetNick;
-		// 	if (targetNick.empty()) {
-		// 		// TODO - Send error: no nickname given
-		// 		return 0;
-		// 	}
-		
-		// 	Client* targetClient = NULL;
-		// 	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		// 		if ((*it)->getNick() == targetNick) {
-		// 			targetClient = *it;
-		// 			break;
-		// 		}
-		// 	}
-		// 	if (!targetClient) {
-		// 		// TODO - Send error: no such nick
-		// 		return 0;
-		// 	}
-		
-		// 	// Check if the sender is an operator in the channel
-		// 	if (!channel->isOperator(client)) {
-		// 		// TODO - Send error: you must be an operator to change modes
-		// 		return 0;
-		// 	}
-		
-		// 	if (modeChange[0] == '+') {
-		// 		// Add operator status
-		// 		channel->addOperator(targetClient);
-		// 		// Notify channel about the mode change
-		// 		std::string msg = ":" + client->getNick() + " MODE " + channelName + " +o " + targetNick + "\r\n";
-		// 		// Broadcast to all clients in channel
-		// 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-		// 			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-		// 		}
-		// 	} else if (modeChange[0] == '-') {
-		// 		// Remove operator status
-		// 		channel->removeOperator(targetClient);
-		// 		// Notify channel about the mode change
-		// 		std::string msg = ":" + client->getNick() + " MODE " + channelName + " -o " + targetNick + "\r\n";
-		// 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-		// 			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-		// 		}
-		// 	}
-		// }
+else if (command == "MODE") {
+	std::string channelName;
+	commandStream >> channelName;
 
-		else if (command == "MODE") {
-			std::string channelName;
-			commandStream >> channelName;
-		
-			if (channelName.empty()) {
-				// TODO - Send error: no channel specified
-				return 0;
-			}
-		
-			Channel* channel = getChannel(channelName);
-			if (!channel) {
-				// TODO - Send error: no such channel
-				return 0;
-			}
-		
-			std::string modeChange;
-			commandStream >> modeChange;
-		
-			if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
-				// TODO - Invalid mode format
-				return 0;
-			}
-		
-			char mode = modeChange[1];
-			bool isAdding = (modeChange[0] == '+');
-		
-			// Check if the sender is an operator in the channel
-			if (!channel->isOperator(client)) {
-				// TODO - Send error: you must be an operator to change modes
-				return 0;
-			}
-		
-			if (mode == 'o') {
-				std::string targetNick;
-				commandStream >> targetNick;
-				if (targetNick.empty()) {
-					// TODO - Send error: no nickname given
-					return 0;
-				}
-		
-				Client* targetClient = NULL;
-				for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-					if ((*it)->getNick() == targetNick) {
-						targetClient = *it;
-						break;
-					}
-				}
-				if (!targetClient) {
-					// TODO - Send error: no such nick
-					return 0;
-				}
-		
-				if (isAdding) {
-					channel->addOperator(targetClient);
-				} else {
-					channel->removeOperator(targetClient);
-				}
-		
-				// Broadcast mode change
-				std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + " " + targetNick + "\r\n";
-				for (size_t i = 0; i < channel->getClients().size(); ++i) {
-					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-				}
-			} else if (mode == 'i') {
-				if (isAdding) {
-					channel->setInviteOnly(true);
-				} else {
-					channel->setInviteOnly(false);
-				}
-		
-				// Broadcast invite-only mode change (no targetNick needed)
-				std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + "\r\n";
-				for (size_t i = 0; i < channel->getClients().size(); ++i) {
-					send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-				}
-			} else {
-				// TODO - Unknown mode
-				return 0;
+	if (channelName.empty()) {
+		// TODO - Send error: no channel specified
+		return 0;
+	}
+
+	Channel* channel = getChannel(channelName);
+	if (!channel) {
+		// TODO - Send error: no such channel
+		return 0;
+	}
+
+	std::string modeChange;
+	commandStream >> modeChange;
+
+	if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
+		// TODO - Invalid mode format
+		return 0;
+	}
+
+	char mode = modeChange[1];
+	bool isAdding = (modeChange[0] == '+');
+
+	// Check if the sender is an operator in the channel
+	if (!channel->isOperator(client)) {
+		// TODO - Send error: you must be an operator to change modes
+		return 0;
+	}
+
+	if (mode == 'o') {
+		std::string targetNick;
+		commandStream >> targetNick;
+		if (targetNick.empty()) {
+			// TODO - Send error: no nickname given
+			return 0;
+		}
+
+		Client* targetClient = NULL;
+		for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+			if ((*it)->getNick() == targetNick) {
+				targetClient = *it;
+				break;
 			}
 		}
+		if (!targetClient) {
+			// TODO - Send error: no such nick
+			return 0;
+		}
+
+		if (isAdding) {
+			channel->addOperator(targetClient);
+		} else {
+			channel->removeOperator(targetClient);
+		}
+
+		// Broadcast mode change
+		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + " " + targetNick + "\r\n";
+		for (size_t i = 0; i < channel->getClients().size(); ++i) {
+			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+		}
+	} else if (mode == 'i') {
+		if (isAdding) {
+			channel->setInviteOnly(true);
+		} else {
+			channel->setInviteOnly(false);
+		}
+
+		// Broadcast invite-only mode change (no targetNick needed)
+		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + "\r\n";
+		for (size_t i = 0; i < channel->getClients().size(); ++i) {
+			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+		}
+	} else {
+		// TODO - Unknown mode
+		return 0;
+	}
+}
+
 
 		else if (command == "TOPIC") {
 			std::string channelName;
@@ -647,12 +579,12 @@ Client *Server::getClient(int fd)
 }
 
 Channel* Server::getChannel(std::string channelName) {
-	for (size_t i = 0; i < _channels.size(); i++) {
-		if (_channels[i].getName() == channelName) {
-			return &_channels[i];
-		}
-	}
-	return NULL;
+    for (size_t i = 0; i < _channels.size(); i++) {
+        if (_channels[i]->getName() == channelName) { // Use `->` to access members of the pointer
+            return _channels[i]; // Return the pointer directly
+        }
+    }
+    return NULL; // Return NULL if the channel is not found
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
@@ -671,19 +603,19 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
         return;
     }
 
-    // Check if the channel already exists
-    Channel *channel = getChannel(channelName);
-    if (!channel) {
-        // Create a new channel
-        Channel newChannel;
-        newChannel.setName(channelName);
-        newChannel.addClient(client);
-        _channels.push_back(newChannel);
-        channel = &_channels.back();
-    } else {
-        // Add the client to the existing channel
-        channel->addClient(client);
-    }
+	// Check if the channel already exists
+	Channel *channel = getChannel(channelName);
+	if (!channel) {
+		// Create a new channel
+		Channel *newChannel = new Channel();
+		newChannel->setName(channelName);
+		newChannel->addClient(client);
+		_channels.push_back(newChannel); // Store the pointer in the vector
+		channel = newChannel;
+	} else {
+		// Add the client to the existing channel
+		channel->addClient(client);
+	}
 
 	// Increment the client's joined channels count
 	client->incrementJoinedChannels();
