@@ -145,8 +145,8 @@ int Server::handleClientMessage(int fd, const char *msg) {
 	std::string line;
     IRCCommand cmd;
 
-    const int n_commands = 7;
-    std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG"};
+    const int n_commands = 11;
+    std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE"};
     Client *client = getClient(fd);
 
     while (std::getline(ss, line)) {
@@ -183,6 +183,18 @@ int Server::handleClientMessage(int fd, const char *msg) {
             case 6:
                 handlePrivMsgCMD(cmd, client);
                 break;
+			case 7:
+				handleModeOperatorCMD(cmd, client);
+				break;
+			case 8:
+				handleTopicOperatorCMD(cmd, client);
+				break;
+			case 9:
+				handleKickOperatorCMD(cmd, client);
+				break;
+			case 10:
+				handleInviteOperatorCMD(cmd, client);
+				break;
             default:
                 #if DEBUG
                 std::cout << "[DBG]Unknown command: " << cmd.command << std::endl;
