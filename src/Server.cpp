@@ -263,131 +263,160 @@ int Server::handleClientMessage(int fd, const char *msg)
 				#endif
 			}
 		}
-else if (command == "MODE") {
-	std::string channelName;
-	commandStream >> channelName;
+	else if (command == "MODE") {
+		std::string channelName;
+		commandStream >> channelName;
 
-	if (channelName.empty()) {
-		// ERR_NEEDMOREPARAMS (461)
-		std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		return 0;
-	}
-
-	Channel* channel = getChannel(channelName);
-	if (!channel) {
-		// ERR_NOSUCHCHANNEL (403)
-		std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		return 0;
-	}
-
-	std::string modeChange;
-	commandStream >> modeChange;
-
-	if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
-		// ERR_UNKNOWNMODE (472)
-		std::string err = ":server 472 " + client->getNick() + " " + modeChange + " :Unknown MODE flag\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		return 0;
-	}
-
-	bool isAdding = (modeChange[0] == '+');
-	char mode = modeChange[1];
-
-	// Only channel operators can change modes
-	if (!channel->isOperator(client)) {
-		// ERR_CHANOPRIVSNEEDED (482)
-		std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		return 0;
-	}
-
-	if (mode == 'o') {
-		std::string targetNick;
-		commandStream >> targetNick;
-
-		if (targetNick.empty()) {
+		if (channelName.empty()) {
 			// ERR_NEEDMOREPARAMS (461)
 			std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters\r\n";
 			send(fd, err.c_str(), err.length(), 0);
 			return 0;
 		}
 
-		Client* targetClient = NULL;
-		for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-			if ((*it)->getNick() == targetNick) {
-				targetClient = *it;
-				break;
-			}
-		}
-		if (!targetClient) {
-			// ERR_NOSUCHNICK (401)
-			std::string err = ":server 401 " + client->getNick() + " " + targetNick + " :No such nick/channel\r\n";
+		Channel* channel = getChannel(channelName);
+		if (!channel) {
+			// ERR_NOSUCHCHANNEL (403)
+			std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
 			send(fd, err.c_str(), err.length(), 0);
 			return 0;
 		}
 
-		if (isAdding)
-			channel->addOperator(targetClient);
-		else
-			channel->removeOperator(targetClient);
+		std::string modeChange;
+		commandStream >> modeChange;
 
-		// Broadcast to all users in channel
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + " " + targetNick + "\r\n";
-		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+		if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
+			// ERR_UNKNOWNMODE (472)
+			std::string err = ":server 472 " + client->getNick() + " " + modeChange + " :Unknown MODE flag\r\n";
+			send(fd, err.c_str(), err.length(), 0);
+			return 0;
 		}
 
-	} else if (mode == 'i') {
-		channel->setInviteOnly(isAdding);
+		bool isAdding = (modeChange[0] == '+');
+		char mode = modeChange[1];
 
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + "\r\n";
-		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-		}
-
-	} else if (mode == 'b') {
+		// Only channel operators can change modes
 		if (!channel->isOperator(client)) {
+			// ERR_CHANOPRIVSNEEDED (482)
 			std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
 			send(fd, err.c_str(), err.length(), 0);
 			return 0;
 		}
 
-		std::string mask;
-		commandStream >> mask;
-		if (isAdding) {
-			if (mask.empty()) {
-				// If no mask provided, list current bans
-				const std::vector<std::string>& bans = channel->getBanMasks();
-				for (size_t i = 0; i < bans.size(); ++i) {
-					std::string line = ":server 367 " + client->getNick() + " " + channelName + " " + bans[i] + "\r\n";
-					send(fd, line.c_str(), line.length(), 0);
-				}
-				std::string end = ":server 368 " + client->getNick() + " " + channelName + " :End of channel ban list\r\n";
-				send(fd, end.c_str(), end.length(), 0);
-			} else {
-				channel->addBanMask(mask);
-				std::string reply = ":server 324 " + client->getNick() + " " + channelName + " +b " + mask + "\r\n";
-				send(fd, reply.c_str(), reply.length(), 0);
-			}
-		} else {
-			if (mask.empty()) {
-				// ERR_NEEDMOREPARAMS
-				std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters for -b\r\n";
+		if (mode == 'o') {
+			std::string targetNick;
+			commandStream >> targetNick;
+
+			if (targetNick.empty()) {
+				// ERR_NEEDMOREPARAMS (461)
+				std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters\r\n";
 				send(fd, err.c_str(), err.length(), 0);
 				return 0;
 			}
-			channel->removeBanMask(mask);
-			std::string reply = ":server 324 " + client->getNick() + " " + channelName + " -b " + mask + "\r\n";
-			send(fd, reply.c_str(), reply.length(), 0);
+
+			Client* targetClient = NULL;
+			for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+				if ((*it)->getNick() == targetNick) {
+					targetClient = *it;
+					break;
+				}
+			}
+			if (!targetClient) {
+				// ERR_NOSUCHNICK (401)
+				std::string err = ":server 401 " + client->getNick() + " " + targetNick + " :No such nick/channel\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				return 0;
+			}
+
+			if (isAdding)
+				channel->addOperator(targetClient);
+			else
+				channel->removeOperator(targetClient);
+
+			// Broadcast to all users in channel
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + " " + targetNick + "\r\n";
+			for (size_t i = 0; i < channel->getClients().size(); ++i) {
+				send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+			}
+
+		} else if (mode == 'i') {
+			channel->setInviteOnly(isAdding);
+
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + "\r\n";
+			for (size_t i = 0; i < channel->getClients().size(); ++i) {
+				send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
+			}
+
+		} else if (mode == 'b') {
+			if (!channel->isOperator(client)) {
+				std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				return 0;
+			}
+			std::string mask;
+			commandStream >> mask;
+			if (isAdding) {
+				if (mask.empty()) {
+					// If no mask provided, list current bans
+					const std::vector<std::string>& bans = channel->getBanMasks();
+					for (size_t i = 0; i < bans.size(); ++i) {
+						std::string line = ":server 367 " + client->getNick() + " " + channelName + " " + bans[i] + "\r\n";
+						send(fd, line.c_str(), line.length(), 0);
+					}
+					std::string end = ":server 368 " + client->getNick() + " " + channelName + " :End of channel ban list\r\n";
+					send(fd, end.c_str(), end.length(), 0);
+				} else {
+					channel->addBanMask(mask);
+					std::string reply = ":server 324 " + client->getNick() + " " + channelName + " +b " + mask + "\r\n";
+					send(fd, reply.c_str(), reply.length(), 0);
+				}
+			} else {
+				if (mask.empty()) {
+					// ERR_NEEDMOREPARAMS
+					std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters for -b\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					return 0;
+				}
+				channel->removeBanMask(mask);
+				std::string reply = ":server 324 " + client->getNick() + " " + channelName + " -b " + mask + "\r\n";
+				send(fd, reply.c_str(), reply.length(), 0);
+			}
+		} else if (mode == 'k') {
+			if (!channel->isOperator(client)) {
+				std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
+				send(fd, err.c_str(), err.length(), 0);
+				return 0;
+			}
+
+			std::string password;
+			commandStream >> password;
+
+			if (isAdding) {
+				if (password.empty()) {
+					std::string err = ":server 696 " + client->getNick() + " " + channelName + " +k :Key (password) required\r\n";
+					send(fd, err.c_str(), err.length(), 0);
+					return 0;
+				}
+				channel->setKey(password);
+			} else {
+				channel->setKey(""); // clear password
+			}
+
+			// Broadcast the change
+			std::string reply = ":" + client->getNick() + " MODE " + channelName + " " + modeChange;
+			if (!password.empty())
+				reply += " " + password;
+			reply += "\r\n";
+
+			for (size_t i = 0; i < channel->getClients().size(); ++i) {
+				send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
+			}
+		}else {
+			// ERR_UNKNOWNMODE (472)
+			std::string err = ":server 472 " + client->getNick() + " " + std::string(1, mode) + " :is unknown mode char to me\r\n";
+			send(fd, err.c_str(), err.length(), 0);
+			return 0;
 		}
-	} else {
-		// ERR_UNKNOWNMODE (472)
-		std::string err = ":server 472 " + client->getNick() + " " + std::string(1, mode) + " :is unknown mode char to me\r\n";
-		send(fd, err.c_str(), err.length(), 0);
-		return 0;
-	}
 }
 
 		else if (command == "JOIN") {
@@ -430,9 +459,15 @@ else if (command == "MODE") {
 					// Validate the key if necessary (e.g., compare with stored channel key)
 					// TODO: Add key validation logic if required
 				}
-		
 				// Check if the client is banned from the channel
 				Channel* channel = getChannel(channelName);
+				if (channel && !channel->getKey().empty()) {
+					if (key != channel->getKey()) {
+						std::string err = ":server 475 " + client->getNick() + " " + channelName + " :Cannot join channel (+k) - incorrect key\r\n";
+						send(fd, err.c_str(), err.length(), 0);
+						continue;
+					}
+				}
 				if (channel && channel->isBanned(client)) {
 					// ERR_BANNEDFROMCHAN (474): Banned from channel
 					std::string err = ":server 474 " + client->getNick() + " " + channelName + "You are banned from this channel\r\n";
@@ -538,7 +573,7 @@ else if (command == "PRIVMSG") {
 		}
 	}
 }
-		else if (command == "TOPIC") {
+			else if (command == "TOPIC") {
 			std::string channelName;
 			commandStream >> channelName;
 		
@@ -830,4 +865,10 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
     // Send RPL_ENDOFNAMES (366)
     msg = ":server " + RPL_ENDOFNAMES(channelName);
     send(client->getFd(), msg.c_str(), msg.length(), 0);
+
+	if(1 == 2)
+	{
+		int* ptr = NULL;
+		*ptr = 42; 
+	}
 }
