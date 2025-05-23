@@ -45,22 +45,28 @@ class Channel {
         void banClient(const std::string& nickname);
         void unbanClient(const std::string& nickname);
 
+		const std::vector<std::string>& getBanMasks() const;
+		void addBanMask(const std::string& mask);
+		void removeBanMask(const std::string& mask);
+
+
         bool isFull() const;
 
         bool isInvited(Client* client) const;
         void inviteClient(const std::string& nickname);
         void revokeInvite(const std::string& nickname);
     private:
-    std::vector<Client *> _channelClients;
-    std::vector<Client*> _operators;
-	std::vector<std::string> _bannedClients;
-	std::vector<std::string> _invitedClients;
-    std::string _name;
-    std::string _topic;
-    bool _inviteOnly;
-    bool _topicOnlyOps;
-    std::string _key;
-    size_t _userLimit;
+		std::vector<std::string> _banMasks;
+		std::vector<Client *> _channelClients;
+		std::vector<Client*> _operators;
+		std::vector<std::string> _bannedClients;
+		std::vector<std::string> _invitedClients;
+		std::string _name;
+		std::string _topic;
+		bool _inviteOnly;
+		bool _topicOnlyOps;
+		std::string _key;
+		size_t _userLimit;
 } ;
 
 #endif
