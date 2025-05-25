@@ -8,6 +8,7 @@
 #define RPL_CREATED(date) ("003 :This server was created " + _creationDate + "\n")
 
 #define RPL_MYINFO(server, nick, version) ("004 " + nick + " " + server + " " + version + " :Available user modes: io, channel modes: tkl\r\n")
+
 /*-----------------------------*/
 
 
@@ -54,6 +55,8 @@
 
 #define ERR_NOSUCHCHANNEL(channel) ("403 " + channel + " :No such channel\n")
 
+#define ERR_TOOMANYCHANNELS(channel) (":server 405 " + client->getNick() + " " + channel + "You have joined too many channels\r\n")
+
 #define ERR_UNKNOWNCOMMAND(command) ("421 " + command + " :Unknown command\n")
 
 #define ERR_NONICKNAMEGIVEN "431 :No nickname given\n"
@@ -74,7 +77,13 @@
 
 #define ERR_PASSWDMISMATCH "464 :Password incorrect\n"
 
+#define ERR_CHANNELISFULL(channelName) ("471 " + client->getNick() + channelName + " :Cannot join channel (+l)\n")
+
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
+
+#define ERR_INVITEONLYCHAN(channelName) ("473 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
+
+#define ERR_BANNEDFROMCHAN(channelName) ("474 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
 
 #define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 

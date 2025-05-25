@@ -3,7 +3,6 @@
 
 #include "IRC.hpp"
 
-
 class Client;
 class Channel;
 
@@ -29,13 +28,26 @@ class Server {
 		void acceptNewClient(struct pollfd fds[]);
 		void handleClientData(struct pollfd fds[]);
 		int handleClientMessage(int client_fd, const char *msg);
+		void sendCMD(int fd, std::string msg);
 		void closeAllClientFds(void);
 		Client *getClient(int fd);
 		Client *getClientByNick(const std::string &nickname);
 		Channel *getChannel(std::string channelName);
-		void joinChannel(Client *client, const std::string &channelName);
+		void 	joinChannel(Client *client, const std::string &channelName);
 		const std::string &getPassword() const;
-		
+		int 	handleCapCMD(IRCCommand cmd, Client *client);
+		int 	handlePassCMD(IRCCommand cmd, Client *client);
+		int 	handleNickCMD(IRCCommand cmd, Client *client);
+		int 	handleUserCMD(IRCCommand cmd, Client *client);
+		int		handleJoinCMD(IRCCommand cmd, Client *client);
+		int 	handleQuitCMD(IRCCommand cmd, Client *client);
+		int 	handlePrivMsgCMD(IRCCommand cmd, Client *client);
+		int 	handleModeOperatorCMD(IRCCommand cmd, Client *client);
+		int		handleKickOperatorCMD(IRCCommand cmd, Client *client);
+		int		handleInviteOperatorCMD(IRCCommand cmd, Client *client);
+		int		handleTopicOperatorCMD(IRCCommand cmd, Client *client);
 };
 
-# endif
+void 	handleSIGINT(int sig);
+
+#endif
