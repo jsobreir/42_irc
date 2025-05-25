@@ -52,10 +52,14 @@ Server &Server::operator=(Server const &other) {
 }
 
 Server::~Server() {
-    for (size_t i = 0; i < _channels.size(); ++i) {
-        delete _channels[i];
+    for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
+        delete *it;
     }
-    _channels.clear();
+	_channels.clear();
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		delete *it;
+	}
+	_clients.clear();
 }
 
 int Server::getServerFd(void) const {
@@ -67,7 +71,6 @@ void handleSIGINT(int sig) {
 	(void)sig;
 	close(g_server->getServerFd());
 	g_server->closeAllClientFds();
-	exit(0);
 }
 
 void Server::start() {
@@ -77,7 +80,7 @@ void Server::start() {
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (_server_fd < 0) {
 		perror("socket");
-		return;
+		throw std::exception();
 	}
 
 	// Set SO_REUSEADDR to allow immediate reuse of the port
@@ -86,6 +89,7 @@ void Server::start() {
 		perror("setsockopt");
 		close(_server_fd);
 		close(_server_fd);
+		throw std::exception();
 		return;
 	}
 
@@ -97,13 +101,13 @@ void Server::start() {
 	if (bind(_server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
 		perror("bind");
 		close(_server_fd);
-		return;
+		throw std::exception();
 	}
 
 	if (listen(_server_fd, 5) < 0) {
 		perror("listen");
 		close(_server_fd);
-		return;
+		throw std::exception();
 	}
 
 	std::cout << "Server listening on port " << port << std::endl;
@@ -117,7 +121,7 @@ void Server::start() {
 		int activity = poll(fds, _nfds, -1);
 		if (activity < 0) {
 			perror("poll");
-			break;
+			throw std::exception();
 		}
 		signal(SIGINT, handleSIGINT);
 		if (fds[0].revents & POLLIN)
