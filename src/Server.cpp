@@ -103,7 +103,6 @@ void handleSIGINT(int sig) {
 	(void)sig;
 	close(g_server->getServerFd());
 	g_server->closeAllClientFds();
-	exit(0);
 }
 
 void Server::acceptNewClient(struct pollfd fds[]) {
@@ -213,9 +212,9 @@ void Server::sendCMD(int fd, std::string msg) {
 
 
 void Server::closeAllClientFds() {
-	for (int i = 0; i < _nfds; i++) {
-		if (_clients[i])
-			close(_clients[i]->getFd());
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		if (*it)
+			close((*it)->getFd());
 	}
 	return ;
 }

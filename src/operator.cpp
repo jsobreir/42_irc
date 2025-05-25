@@ -1,42 +1,53 @@
 #include "IRC.hpp"
 
 int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
-	std::string channelName = cmd.args[0];
-
-	if (channelName.empty()) {
+	
+	if (!cmd.args.size()) {
 		// TODO - Send error: no channel specified
+        #if DEBUG
+			std::cout << "Entered No channel name if" << std::endl;
+        #endif
 		return 0;
 	}
+	std::string channelName = cmd.args[0];
 
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
+        #if DEBUG
+            std::cout << "Entered No channel name if" << std::endl;
+        #endif
 		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(channelName));
 		return 0;
 	}
-
-	std::string modeChange = cmd.args[1];
-
-	if (modeChange.empty() || (modeChange[0] != '+' && modeChange[0] != '-')) {
+	if (cmd.args.size() < 2 || (cmd.args[1][0] != '+' && cmd.args[1][0] != '-') || cmd.args[1].size() < 2) {
 		// TODO - Invalid mode format
+        #if DEBUG
+            std::cout << "[DBG] Invalid mode format" << std::endl;
+        #endif
 		return 0;
 	}
 
-	char mode = modeChange[1];
-	bool isAdding = (modeChange[0] == '+');
-
+	char mode = cmd.args[1][1];
+	bool isAdding = (cmd.args[1][0] == '+');
 	// Check if the sender is an operator in the channel
 	if (!channel->isOperator(client)) {
+		#if DEBUG
+		std::cout << "[DBG] Is operator" << std::endl;
+        #endif
 		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
 		return 0;
 	}
 
 	if (mode == 'o') {
-		std::string targetNick = cmd.args[2];
-
-		if (targetNick.empty()) {
-			// TODO - Send error: no nickname given
+		if (cmd.args.size() < 3) {
+			std::string msg = "Please enter an user.\n";
+			send(client->getFd(), msg.c_str(), msg.size(), 0);
 			return 0;
 		}
+		std::string targetNick = cmd.args[2];
+        #if DEBUG
+            std::cout << "[DBG] Mode o" << std::endl;
+        #endif
 
 		Client* targetClient = NULL;
 		for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
@@ -57,7 +68,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		}
 
 		// Broadcast mode change
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + " " + targetNick + "\r\n";
+		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + cmd.args[1] + " " + targetNick + "\r\n";
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
 		}
@@ -69,12 +80,12 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		}
 
 		// Broadcast invite-only mode change (no targetNick needed)
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + modeChange + "\r\n";
+		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + cmd.args[1] + "\r\n";
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
 		}
 	} else {
-		sendCMD(client->getFd(), ERR_UNKNOWNMODE(modeChange));
+		sendCMD(client->getFd(), ERR_UNKNOWNMODE(cmd.args[1]));
 		return 0;
 	}
 	return 0;
@@ -82,15 +93,15 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 
 int		Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 	// USAGE: /KICK  <nickname> [:reason...]
-	std::string channelName = cmd.args[0];
-	std::string targetNick = cmd.args[1];
-
-	// Check required params
-	if (channelName.empty() || targetNick.empty()) {
+	if (cmd.args.size() < 2) {
 		std::string err = ":server 461 " + client->getNick() + " KICK :Not enough parameters\r\n";
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
+	std::string channelName = cmd.args[0];
+	std::string targetNick = cmd.args[1];
+
+	// Check required params
 
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
@@ -123,7 +134,7 @@ int		Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 
 	std::string reason;
 	// Parse optional reason (rest of line)
-	if (cmd.args[2].size() > 0) {
+	if (cmd.args.size() < 2) {
 		if (!reason.empty() && reason[0] == ' ')
 			reason = reason.substr(1);
 		if (!reason.empty() && reason[0] == ':')
