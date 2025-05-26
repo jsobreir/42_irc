@@ -11,8 +11,6 @@ Client::Client (int fd) : _joinedChannels(0){
 Client::Client(Client const &other) {
 
     _fd = other._fd;
-    _received_passwd = other._received_passwd;
-    _password = other._password;
     _nick = other._nick;
     _user = other._user;
     _joinedChannels = other._joinedChannels;
@@ -22,9 +20,6 @@ int Client::getFd() const {
     return _fd;
 }
 
-void Client::setPass(const std::string &pass) {
-    _password = pass;
-}
 Client &Client::operator=(Client const &other) {
 	(void)other;
 	return *this;
@@ -32,16 +27,6 @@ Client &Client::operator=(Client const &other) {
 
 Client::~Client() {
 
-}
-
-void Client::setPasswd(std::string passwd)
-{
-    if (passwd.length() > 5)
-        _password = passwd.substr(5);
-    else
-        _password = "";
-    _received_passwd = true;
-	std::cout << "Server password changed " << std::endl;
 }
 
 void Client::setNick(std::string nick)

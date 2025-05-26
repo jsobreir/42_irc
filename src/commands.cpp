@@ -23,7 +23,15 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	#if DEBUG
 		std::cout << "[DBG]Setting password for client " << client->getFd() << std::endl;
 	#endif
-	client->setPasswd(cmd.args[0]);
+	if (cmd.args.size()) {
+		std::string key = cmd.args[0];
+		if (key != _password) {
+			sendCMD(client->getFd(), ERR_PASSWDMISMATCH);
+			sendCMD(client->getFd(), "ERROR :Wrong Password");
+			int fd = client->getFd();
+			close(fd);
+		}
+	}
 	return 0;
 }
 
