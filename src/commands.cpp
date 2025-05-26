@@ -207,3 +207,22 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 	}
 	return 0;
 }
+
+int Server::handlePingCMD(IRCCommand cmd, Client *client) {
+	if (cmd.args.empty()) {
+		std::string err = ":server 409 " + client->getNick() + " :No origin specified\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return 0;
+	}
+
+	std::string token = cmd.args[0];
+	std::string response = "PONG :" + token + "\r\n";
+	send(client->getFd(), response.c_str(), response.length(), 0);
+
+	#if DEBUG
+	std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
+	std::cout << "[PING] Replied with: " << response;
+	#endif
+
+	return 0;
+}
