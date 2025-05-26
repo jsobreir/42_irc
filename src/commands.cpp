@@ -157,12 +157,39 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 }
 
 int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
-	(void)cmd;
-	#if DEBUG
-		std::cout << "[DBG]Client " << client->getFd() << " disconnected" << std::endl;
-	#endif
-	close(client->getFd());
-	return 0;
+    #if DEBUG
+        std::cout << "[DBG]Client " << client->getFd() << " disconnected" << std::endl;
+    #endif
+
+    std::string reason;
+    if (!cmd.args.empty()) {
+        for (size_t i = 0; i < cmd.args.size(); ++i) {
+            reason.append(cmd.args[i]);
+            if (i != cmd.args.size() - 1)
+                reason.append(" ");
+        }
+    }
+
+    std::string quitMsg = ":" + client->getNick() + "!" + client->getUser() + "@127.0.0.1 QUIT :" + reason + "#7\r\n";
+
+    for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+        Channel* chan = *it;
+
+        // Send QUIT to other clients in the channel *before* removing the client
+        if (chan->hasClient(client)) {
+            std::vector<Client *> channelClients = chan->getClients();
+            for (size_t i = 0; i < channelClients.size(); ++i) {
+                if (channelClients[i] != client) {
+                    sendCMD(channelClients[i]->getFd(), quitMsg);
+                }
+            }
+            chan->removeClient(client);
+        }
+    }
+
+    close(client->getFd());
+    removeClient(client);
+    return 0;
 }
 
 int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {

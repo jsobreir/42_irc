@@ -40,7 +40,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 
 	if (mode == 'o') {
 		if (cmd.args.size() < 3) {
-			std::string msg = "Please enter an user.\n";
+			std::string msg = "Please enter an user.\r\n";
 			send(client->getFd(), msg.c_str(), msg.size(), 0);
 			return 0;
 		}

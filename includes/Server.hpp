@@ -31,6 +31,7 @@ class Server {
 		void sendCMD(int fd, std::string msg);
 		void closeAllClientFds(void);
 		Client *getClient(int fd);
+		void 	removeClient(Client *client);
 		Client *getClientByNick(const std::string &nickname);
 		Channel *getChannel(std::string channelName);
 		void 	joinChannel(Client *client, const std::string &channelName);
