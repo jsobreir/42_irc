@@ -2,13 +2,13 @@
 #include "Client.hpp"
 
 Channel::Channel() 
-	: _inviteOnly(false), _topicOnlyOps(false), _userLimit(0) 
+	: _inviteOnly(false), _topicOnlyOps(true), _userLimit(0) 
 {
 	// _operators vector is default-initialized empty
 }
 
 Channel::Channel(int fd) 
-	: _inviteOnly(false), _topicOnlyOps(false), _userLimit(0) 
+	: _inviteOnly(false), _topicOnlyOps(true), _userLimit(0) 
 {
 	(void)fd;
 }

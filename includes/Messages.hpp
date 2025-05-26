@@ -36,7 +36,7 @@
 
 #define RPL_WHOREPLY(nickname, host,  channelname, user, realname, flag) (":" + host + " 352 " + client->getNick() + " " + channelname + " " + host + " " + SERVER_NAME + " " + user + " " + flag + " :2 " + realname + "\r\n")
 
-#define RPL_NAMREPLY(nick, channel, users) ("353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n")
+#define RPL_NAMREPLY(nick, channel, users) (":" + _serverName + " 353 " + nick + " = " + channel + " :" + users + "\r\n")
 
 #define RPL_ENDOFNAMES(channel) ("366 " + channelName + " End of /NAMES list\r\n")
 /*-----------------------------*/

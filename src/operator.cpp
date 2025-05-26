@@ -84,7 +84,39 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
 		}
-	} else {
+	} else if (mode == 'k') {
+		if (!channel->isOperator(client)) {
+			std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
+			send(client->getFd(), err.c_str(), err.length(), 0);
+			return 0;
+		}
+		if (cmd.args.size() < 3) {
+			std::cout << "Bad Usage" << std::endl;
+			return 1;
+		}
+		std::string password = cmd.args[2];
+		
+		if (isAdding) {
+			if (password.empty()) {
+				std::string err = ":server 696 " + client->getNick() + " " + channelName + " +k :Key (password) required\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return 0;
+			}
+			channel->setKey(password);
+		} else {
+			channel->setKey(""); // clear password
+		}
+
+		// Broadcast the change
+		std::string reply = ":" + client->getNick() + " MODE " + channelName + " " + mode;
+		if (!password.empty())
+			reply += " " + password;
+		reply += "\r\n";
+
+		for (size_t i = 0; i < channel->getClients().size(); ++i) {
+			send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
+		}
+	}else {
 		sendCMD(client->getFd(), ERR_UNKNOWNMODE(cmd.args[1]));
 		return 0;
 	}
@@ -192,7 +224,7 @@ int		Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 		// Only allow topic change if the client is operator in the channel
 		if (!channel->isOperator(client)) {
 			sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channelName));
-			//continue;
+			return 0;
 		}
 
 		// Set the new topic
