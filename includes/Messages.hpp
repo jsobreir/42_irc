@@ -81,7 +81,8 @@
 
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
 
-#define ERR_INVITEONLYCHAN(channelName) ("473 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
+//#define ERR_INVITEONLYCHAN(channelName) ("473 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
+#define ERR_INVITEONLYCHAN(nick, channelName) (":server 473 " + client->getNick() + " " + channelName + " :Cannot join channel (+i)\r\n")
 
 #define ERR_BANNEDFROMCHAN(channelName) ("474 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
 

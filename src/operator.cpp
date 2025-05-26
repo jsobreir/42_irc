@@ -40,7 +40,8 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 
 	if (mode == 'o') {
 		if (cmd.args.size() < 3) {
-			std::string msg = "Please enter an user.\n";
+			std::string msg = "Please enter an user.\r\n";
+
 			send(client->getFd(), msg.c_str(), msg.size(), 0);
 			return 0;
 		}
@@ -116,91 +117,55 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
 		}
-	}else {
+	}else if (mode == 'l') {
+		if (isAdding) {
+			// Ensure parameter for +l (user limit) is provided
+			if (cmd.args.size() < 3) {
+				std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters for +l\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return 0;
+			}
+	
+			std::string limitStr = cmd.args[2];
+			for (size_t i = 0; i < limitStr.size(); ++i) {
+				if (!isdigit(limitStr[i])) {
+					std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Invalid limit value\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return 0;
+				}
+			}
+	
+			int limit = std::atoi(limitStr.c_str());
+			if (limit <= 0) {
+				std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Limit must be greater than 0\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return 0;
+			}
+	
+			channel->setUserLimit(limit);
+	
+			// Broadcast limit set
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " +l " + limitStr + "\r\n";
+			const std::vector<Client*>& clients = channel->getClients();
+			for (size_t i = 0; i < clients.size(); ++i)
+				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+		} else {
+			// Remove the limit
+			channel->setUserLimit(0);
+	
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " -l\r\n";
+			const std::vector<Client*>& clients = channel->getClients();
+			for (size_t i = 0; i < clients.size(); ++i)
+				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+		}
+	}
+	else {
 		sendCMD(client->getFd(), ERR_UNKNOWNMODE(cmd.args[1]));
 		return 0;
 	}
 	return 0;
 }
 
-// int		Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
-// 	// USAGE: /KICK  <nickname> [:reason...]
-// 	if (cmd.args.size() < 2) {
-// 		std::string err = ":server 461 " + client->getNick() + " KICK :Not enough parameters\r\n";
-// 		send(client->getFd(), err.c_str(), err.length(), 0);
-// 		return 0;
-// 	}
-// 	std::string channelName = cmd.args[0];
-// 	std::string targetNick = cmd.args[1];
-
-// 	// Check required params
-
-// 	Channel* channel = getChannel(channelName);
-// 	if (!channel) {
-// 		std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
-// 		send(client->getFd(), err.c_str(), err.length(), 0);
-// 		return 0;
-// 	}
-
-// 	if (!channel->isOperator(client)) {
-// 		std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
-// 		send(client->getFd(), err.c_str(), err.length(), 0);
-// 		return 0;
-// 	}
-
-// 	// Locate target client from the channel
-// 	Client* targetClient = NULL;
-// 	const std::vector<Client*>& clients = channel->getClients();
-// 	for (size_t i = 0; i < clients.size(); ++i) {
-// 		if (clients[i]->getNick() == targetNick) {
-// 			targetClient = clients[i];
-// 			break;
-// 		}
-// 	}
-
-// 	if (!targetClient || !channel->hasClient(targetClient)) {
-// 		std::string err = ":server 441 " + client->getNick() + " " + targetNick + " " + channelName + " :They aren't on that channel\r\n";
-// 		send(client->getFd(), err.c_str(), err.length(), 0);
-// 		return 0;
-// 	}
-
-// 	// std::string reason;
-// 	// // Parse optional reason (rest of line)
-// 	// if (cmd.args.size() < 2) {
-// 	// 	if (!reason.empty() && reason[0] == ' ')
-// 	// 		reason = reason.substr(1);
-// 	// 	if (!reason.empty() && reason[0] == ':')
-// 	// 		reason = reason.substr(1);
-// 	// }
-// 	std::string reason;
-// 	if (cmd.args.size() > 2) {
-// 		for (size_t i = 2; i < cmd.args.size(); ++i) {
-// 			reason += cmd.args[i];
-// 			if (i + 1 < cmd.args.size())
-// 				reason += " ";
-// 		}
-// 		if (!reason.empty() && reason[0] == ':')
-// 			reason = reason.substr(1);
-// 	}
-	
-// 	// Format KICK message
-// 	std::string kickMsg = ":" + client->getNick() + " KICK " + channelName + " " + targetNick;
-// 	if (!reason.empty())
-// 		kickMsg += " :" + reason;
-// 	kickMsg += "\r\n";
-
-// 	// Broadcast to channel
-// 	for (size_t i = 0; i < clients.size(); ++i)
-// 		send(clients[i]->getFd(), kickMsg.c_str(), kickMsg.length(), 0);
-
-// 	// Send to kicked client as well (optional redundancy)
-// 	send(targetClient->getFd(), kickMsg.c_str(), kickMsg.length(), 0);
-
-// 	// Remove user from channel
-// 	channel->removeClient(targetClient);
-// 	targetClient->decrementJoinedChannels();
-// 	return 0;
-// }
 int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
     // USAGE: /KICK <channel> <nickname> [:reason...]
     if (cmd.args.size() < 2) {
@@ -329,27 +294,70 @@ int		Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	return 0;
 }
 
-int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
-	(void)cmd;
-	(void) client;
-	return 1;
+// int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
+// 	(void)cmd;
+// 	(void) client;
+// 	return 1;
+// }
+
+int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
+    // Ensure the command has the required arguments: target nickname and channel name
+    if (cmd.args.size() < 2) {
+        std::string err = ":server 461 " + client->getNick() + " INVITE :Not enough parameters\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return 0;
+    }
+
+    std::string targetNick = cmd.args[0];
+    std::string channelName = cmd.args[1];
+
+    // Check if the channel exists
+    Channel* channel = getChannel(channelName);
+    if (!channel) {
+        std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return 0;
+    }
+
+    // Check if the client is an operator in the channel
+    if (!channel->isOperator(client)) {
+        std::string err = ERR_CHANOPRIVSNEEDED(client->getNick(), channelName);
+        sendCMD(client->getFd(), err);
+        return 0;
+    }
+
+    // Find the target client by nickname
+    Client* targetClient = NULL;
+    for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+        if ((*it)->getNick() == targetNick) {
+            targetClient = *it;
+            break;
+        }
+    }
+
+    if (!targetClient) {
+        std::string err = ":server 401 " + client->getNick() + " " + targetNick + " :No such nick/channel\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return 0;
+    }
+
+    // Check if the target client is already in the channel
+    if (channel->hasClient(targetClient)) {
+        std::string err = ":server 443 " + client->getNick() + " " + targetNick + " " + channelName + " :is already on channel\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return 0;
+    }
+
+    // Add the target client to the channel's invite list
+    channel->inviteClient(targetNick);
+
+    // Notify the target client about the invitation
+    std::string inviteMsg = ":" + client->getNick() + " INVITE " + targetNick + " :" + channelName + "\r\n";
+    send(targetClient->getFd(), inviteMsg.c_str(), inviteMsg.length(), 0);
+
+    // Notify the inviter that the invitation was successful
+    std::string successMsg = ":server 341 " + client->getNick() + " " + targetNick + " " + channelName + "\r\n";
+    send(client->getFd(), successMsg.c_str(), successMsg.length(), 0);
+
+    return 0;
 }
-
-int Server::handlePingCMD(IRCCommand cmd, Client *client) {
-	if (cmd.args.empty()) {
-		std::string err = ":server 409 " + client->getNick() + " :No origin specified\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
-	}
-
-	std::string token = cmd.args[0];
-	std::string response = "PONG :" + token + "\r\n";
-	send(client->getFd(), response.c_str(), response.length(), 0);
-
-	#if DEBUG
-	std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
-	std::cout << "[PING] Replied with: " << response;
-	#endif
-
-	return 0;
-}	

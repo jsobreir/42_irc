@@ -67,10 +67,12 @@ int Server::getServerFd(void) const {
 }
 
 void handleSIGINT(int sig) {
-	std::cout << "Terminate." << std::endl;
+	std::cout << "\nProgram terminated with CTL-C." << std::endl;
 	(void)sig;
 	close(g_server->getServerFd());
 	g_server->closeAllClientFds();
+	throw std::exception();
+
 }
 
 void Server::start() {
@@ -258,6 +260,17 @@ Client *Server::getClient(int fd)
 	return NULL;
 }
 
+void Server::removeClient(Client *client) {
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		if ((*it)->getFd() == client->getFd()) {
+			// Client *remove = *it;
+			_clients.erase(it);
+			delete *it;
+			break;
+		}
+	}
+}
+
 Channel* Server::getChannel(std::string channelName) {
     for (size_t i = 0; i < _channels.size(); i++) {
         if (_channels[i]->getName() == channelName) {
@@ -268,22 +281,6 @@ Channel* Server::getChannel(std::string channelName) {
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
-
-	// Acho que esta repetido!!!!
-
-    // // Check for leading or trailing whitespace
-    // if (channelName.empty() || channelName.find_first_of(" ") == 0 || channelName.find_last_of(" ") == channelName.size() - 1) {
-    //     std::string err = ":server " + ERR_BADCHANMASK(channelName);
-    //     send(client->getFd(), err.c_str(), err.length(), 0);
-    //     return;
-    // }
-
-    // // Validate channel name (e.g., must start with '#' and have more than just '#')
-    // if (channelName[0] != '#' || channelName.size() == 1) {
-    //     std::string err = ":server " + ERR_BADCHANMASK(channelName);
-    //     send(client->getFd(), err.c_str(), err.length(), 0);
-    //     return;
-    // }
 
 	// Check if the channel already exists
 	Channel *channel = getChannel(channelName);

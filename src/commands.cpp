@@ -137,7 +137,9 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 
 		// Check if the channel is invite-only
 		if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
-			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(channelName));
+			//sendCMD(client->getFd(), ERR_INVITEONLYCHAN(channelName));
+			std::string errorMsg = ERR_INVITEONLYCHAN(client->getNick(), channelName);
+			sendCMD(client->getFd(), errorMsg);
 			continue;
 		}
 
@@ -157,12 +159,39 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 }
 
 int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
-	(void)cmd;
-	#if DEBUG
-		std::cout << "[DBG]Client " << client->getFd() << " disconnected" << std::endl;
-	#endif
-	close(client->getFd());
-	return 0;
+    #if DEBUG
+        std::cout << "[DBG]Client " << client->getFd() << " disconnected" << std::endl;
+    #endif
+
+    std::string reason;
+    if (!cmd.args.empty()) {
+        for (size_t i = 0; i < cmd.args.size(); ++i) {
+            reason.append(cmd.args[i]);
+            if (i != cmd.args.size() - 1)
+                reason.append(" ");
+        }
+    }
+
+    std::string quitMsg = ":" + client->getNick() + "!" + client->getUser() + "@127.0.0.1 QUIT :" + reason + "#7\r\n";
+
+    for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+        Channel* chan = *it;
+
+        // Send QUIT to other clients in the channel *before* removing the client
+        if (chan->hasClient(client)) {
+            std::vector<Client *> channelClients = chan->getClients();
+            for (size_t i = 0; i < channelClients.size(); ++i) {
+                if (channelClients[i] != client) {
+                    sendCMD(channelClients[i]->getFd(), quitMsg);
+                }
+            }
+            chan->removeClient(client);
+        }
+    }
+
+    close(client->getFd());
+    removeClient(client);
+    return 0;
 }
 
 int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
@@ -205,5 +234,24 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 	}
+	return 0;
+}
+
+int Server::handlePingCMD(IRCCommand cmd, Client *client) {
+	if (cmd.args.empty()) {
+		std::string err = ":server 409 " + client->getNick() + " :No origin specified\r\n";
+		send(client->getFd(), err.c_str(), err.length(), 0);
+		return 0;
+	}
+
+	std::string token = cmd.args[0];
+	std::string response = "PONG :" + token + "\r\n";
+	send(client->getFd(), response.c_str(), response.length(), 0);
+
+	#if DEBUG
+	std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
+	std::cout << "[PING] Replied with: " << response;
+	#endif
+
 	return 0;
 }
