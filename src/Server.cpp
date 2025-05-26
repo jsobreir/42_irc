@@ -172,8 +172,8 @@ int Server::handleClientMessage(int fd, const char *msg) {
 	std::string line;
     IRCCommand cmd;
 
-    const int n_commands = 12;
-    std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE", "PING"};
+    const int n_commands = 14;
+    std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE", "PING", "PART", "NOTICE"};
     Client *client = getClient(fd);
 
     while (std::getline(ss, line)) {
@@ -224,6 +224,12 @@ int Server::handleClientMessage(int fd, const char *msg) {
 				break;
 			case 11:
 				handlePingCMD(cmd, client);
+				break;
+			case 12:
+				handlePartCMD(cmd, client);
+				break;
+			case 13:
+				handleNoticeCMD(cmd, client);
 				break;
             default:
                 #if DEBUG

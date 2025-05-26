@@ -39,7 +39,7 @@ class Channel {
 		void setUserLimit(size_t limit);
 	
 		bool hasClient(Client* client) const;
-		void removeClient(Client* client);
+		int removeClient(Client* client);
 
         bool isBanned(Client* client) const;
         void banClient(const std::string& nickname);

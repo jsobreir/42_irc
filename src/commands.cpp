@@ -261,3 +261,32 @@ int Server::handlePingCMD(IRCCommand cmd, Client *client) {
 
 	return 0;
 }
+
+int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
+	if (cmd.args.size() < 2) {
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		return 1;
+	}
+	std::string channelName;
+	std::stringstream ss(cmd.args[0]);
+	while (std::getline(ss, channelName, ',')) {
+		Channel *channel = getChannel(channelName);
+		if (channel == NULL) {
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(channelName));
+			return 1;
+		}
+		if (channel->removeClient(client) == 1) {
+			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick, channelName));
+			return 1;
+		}
+		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART #" + channelName + "\r\n";
+		sendCMD(client->getFd(), partMsg);
+	}
+	return 0;
+}
+
+int 	Server::handleNoticeCMD(IRCCommand cmd, Client *client) {
+	(void)cmd;
+	(void)client;
+	return 0;
+}

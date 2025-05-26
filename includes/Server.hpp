@@ -48,6 +48,8 @@ class Server {
 		int		handleInviteOperatorCMD(IRCCommand cmd, Client *client);
 		int		handleTopicOperatorCMD(IRCCommand cmd, Client *client);
 		int		handlePingCMD(IRCCommand cmd, Client *client);
+		int 	handlePartCMD(IRCCommand cmd, Client *client);
+		int 	handleNoticeCMD(IRCCommand cmd, Client *client);
 };
 
 void 	handleSIGINT(int sig);

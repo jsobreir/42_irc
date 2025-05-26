@@ -153,15 +153,16 @@ bool Channel::hasClient(Client* client) const {
 	return false;
 }
 
-void Channel::removeClient(Client* client) {
+int Channel::removeClient(Client* client) {
 	for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
 		if (*it == client) {
 			_channelClients.erase(it);
 			std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
 			removeOperator(client); // remove operator status if any
-			break;
+			return 0;
 		}
 	}
+	return 1;
 }
 
 Client* Channel::getOperator() const {
