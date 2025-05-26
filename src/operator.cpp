@@ -116,7 +116,49 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
 		}
-	}else {
+	}else if (mode == 'l') {
+		if (isAdding) {
+			// Ensure parameter for +l (user limit) is provided
+			if (cmd.args.size() < 3) {
+				std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters for +l\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return 0;
+			}
+	
+			std::string limitStr = cmd.args[2];
+			for (size_t i = 0; i < limitStr.size(); ++i) {
+				if (!isdigit(limitStr[i])) {
+					std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Invalid limit value\r\n";
+					send(client->getFd(), err.c_str(), err.length(), 0);
+					return 0;
+				}
+			}
+	
+			int limit = std::atoi(limitStr.c_str());
+			if (limit <= 0) {
+				std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Limit must be greater than 0\r\n";
+				send(client->getFd(), err.c_str(), err.length(), 0);
+				return 0;
+			}
+	
+			channel->setUserLimit(limit);
+	
+			// Broadcast limit set
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " +l " + limitStr + "\r\n";
+			const std::vector<Client*>& clients = channel->getClients();
+			for (size_t i = 0; i < clients.size(); ++i)
+				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+		} else {
+			// Remove the limit
+			channel->setUserLimit(0);
+	
+			std::string msg = ":" + client->getNick() + " MODE " + channelName + " -l\r\n";
+			const std::vector<Client*>& clients = channel->getClients();
+			for (size_t i = 0; i < clients.size(); ++i)
+				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+		}
+	}
+	else {
 		sendCMD(client->getFd(), ERR_UNKNOWNMODE(cmd.args[1]));
 		return 0;
 	}
@@ -258,3 +300,4 @@ int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	(void) client;
 	return 1;
 }
+

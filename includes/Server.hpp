@@ -47,6 +47,7 @@ class Server {
 		int		handleKickOperatorCMD(IRCCommand cmd, Client *client);
 		int		handleInviteOperatorCMD(IRCCommand cmd, Client *client);
 		int		handleTopicOperatorCMD(IRCCommand cmd, Client *client);
+		int		handlePingCMD(IRCCommand cmd, Client *client);
 };
 
 void 	handleSIGINT(int sig);
