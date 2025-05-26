@@ -8,6 +8,7 @@
 #define RPL_CREATED(date) ("003 :This server was created " + _creationDate + "\n")
 
 #define RPL_MYINFO(server, nick, version) ("004 " + nick + " " + server + " " + version + " :Available user modes: io, channel modes: tkl\r\n")
+
 /*-----------------------------*/
 
 
@@ -35,7 +36,7 @@
 
 #define RPL_WHOREPLY(nickname, host,  channelname, user, realname, flag) (":" + host + " 352 " + client->getNick() + " " + channelname + " " + host + " " + SERVER_NAME + " " + user + " " + flag + " :2 " + realname + "\r\n")
 
-#define RPL_NAMREPLY(nick, channel, users) ("353 " + client->getNick() + " = " + channelName + " :" + userList + "\r\n")
+#define RPL_NAMREPLY(nick, channel, users) (":" + _serverName + " 353 " + nick + " = " + channel + " :" + users + "\r\n")
 
 #define RPL_ENDOFNAMES(channel) ("366 " + channelName + " End of /NAMES list\r\n")
 /*-----------------------------*/
@@ -53,6 +54,8 @@
 #define ERR_NOSUCHNICK(nick) ("401 " + client->getNick() + " :No such nick/channel\n")
 
 #define ERR_NOSUCHCHANNEL(channel) ("403 " + channel + " :No such channel\n")
+
+#define ERR_TOOMANYCHANNELS(channel) (":server 405 " + client->getNick() + " " + channel + "You have joined too many channels\r\n")
 
 #define ERR_UNKNOWNCOMMAND(command) ("421 " + command + " :Unknown command\n")
 
@@ -74,9 +77,16 @@
 
 #define ERR_PASSWDMISMATCH "464 :Password incorrect\n"
 
+#define ERR_CHANNELISFULL(channelName) ("471 " + client->getNick() + channelName + " :Cannot join channel (+l)\n")
+
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
+
+#define ERR_INVITEONLYCHAN(channelName) ("473 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
+
+#define ERR_BANNEDFROMCHAN(channelName) ("474 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
 
 #define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 
-#define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
+//#define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
+#define ERR_CHANOPRIVSNEEDED(client, channel) (":" + _serverName + " 482 " + client + " " + channel + " :You're not channel operator\r\n")
 /*-----------------------------*/

@@ -2,13 +2,13 @@
 #include "Client.hpp"
 
 Channel::Channel() 
-	: _inviteOnly(false), _topicOnlyOps(false), _userLimit(0) 
+	: _inviteOnly(false), _topicOnlyOps(true), _userLimit(0) 
 {
 	// _operators vector is default-initialized empty
 }
 
 Channel::Channel(int fd) 
-	: _inviteOnly(false), _topicOnlyOps(false), _userLimit(0) 
+	: _inviteOnly(false), _topicOnlyOps(true), _userLimit(0) 
 {
 	(void)fd;
 }
@@ -50,6 +50,14 @@ void Channel::setName(std::string name) {
 
 std::string Channel::getName() const {
 	return _name;
+}
+
+void Client::setAuthenticated(bool value) {
+	_authenticated = value;
+}
+
+bool Client::isAuthenticated() const {
+	return _authenticated;
 }
 
 void Channel::addClient(Client* client) {
@@ -162,9 +170,39 @@ Client* Channel::getOperator() const {
     return NULL; // or nullptr in C++11+
 }
 
+#include <fnmatch.h> // POSIX wildcard matching
+
 bool Channel::isBanned(Client* client) const {
-    return std::find(_bannedClients.begin(), _bannedClients.end(), client->getNick()) != _bannedClients.end();
+	// Check basic nickname ban
+	if (std::find(_bannedClients.begin(), _bannedClients.end(), client->getNick()) != _bannedClients.end())
+		return true;
+
+	// Build full identity: nick!user@host
+	std::string identity = client->getNick() + "!" + client->getUser() + "@localhost"; // change host if needed
+
+	// Check ban masks with wildcard support
+	for (size_t i = 0; i < _banMasks.size(); ++i) {
+		if (fnmatch(_banMasks[i].c_str(), identity.c_str(), 0) == 0)
+			return true;
+	}
+
+	return false;
 }
+
+void Channel::addBanMask(const std::string& mask) {
+	if (std::find(_banMasks.begin(), _banMasks.end(), mask) == _banMasks.end()) {
+		_banMasks.push_back(mask);
+	}
+}
+
+void Channel::removeBanMask(const std::string& mask) {
+	_banMasks.erase(std::remove(_banMasks.begin(), _banMasks.end(), mask), _banMasks.end());
+}
+
+const std::vector<std::string>& Channel::getBanMasks() const {
+	return _banMasks;
+}
+
 
 void Channel::banClient(const std::string& nickname) {
     if (std::find(_bannedClients.begin(), _bannedClients.end(), nickname) == _bannedClients.end()) {

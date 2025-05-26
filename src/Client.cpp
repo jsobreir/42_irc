@@ -41,7 +41,7 @@ void Client::setPasswd(std::string passwd)
     else
         _password = "";
     _received_passwd = true;
-	std::cout << "Client " << _fd << " passwd is: " << _password << std::endl;
+	std::cout << "Server password changed " << std::endl;
 }
 
 void Client::setNick(std::string nick)

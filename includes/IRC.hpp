@@ -15,16 +15,28 @@
 #include <sstream>
 #include <algorithm>
 #include <vector>
+#include <csignal>
 #include <ctime>
 #include <sstream>
 
-#include <Messages.hpp>
+struct IRCCommand {
+    std::string command;
+    std::vector<std::string> args;
+} ;
+IRCCommand parseIRCLine(const std::string &line);
+
+#include "Messages.hpp"
 #include "Server.hpp"
 #include "Client.hpp"
 #include "Channel.hpp"
 
+class Server;
+extern Server *g_server;
+
 #define MAX_CLIENTS 1024
 #define MAX_CHANNELS 1024
-#define DEBUG 0
+#define DEBUG 1
+
+
 
 #endif
