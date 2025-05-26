@@ -72,6 +72,7 @@ void handleSIGINT(int sig) {
 	close(g_server->getServerFd());
 	g_server->closeAllClientFds();
 	throw std::exception();
+
 }
 
 void Server::start() {
@@ -280,6 +281,7 @@ Channel* Server::getChannel(std::string channelName) {
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
+
 	// Check if the channel already exists
 	Channel *channel = getChannel(channelName);
 	if (!channel) {

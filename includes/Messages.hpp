@@ -87,5 +87,6 @@
 
 #define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 
-#define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
+//#define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
+#define ERR_CHANOPRIVSNEEDED(client, channel) (":" + _serverName + " 482 " + client + " " + channel + " :You're not channel operator\r\n")
 /*-----------------------------*/
