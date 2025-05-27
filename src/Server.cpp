@@ -310,19 +310,14 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
     std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
     send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
-    // Broadcast the JOIN to other clients already in the channel (excluding the joining client)
-    const std::vector<Client*> &clients = channel->getClients();
-    for (size_t i = 0; i < clients.size(); i++) {
-        Client *otherClient = clients[i];
-        if (otherClient != client) {
-            send(otherClient->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
-        }
-    }
+	broadcastMsg(channel, joinMsg, client);
 
     std::string topic = channel->getTopic();
     sendCMD(client->getFd(), RPL_TOPIC2(client->getNick(), channelName, topic));
 
-    std::string userList = "";
+	const std::vector<Client*> &clients = channel->getClients();
+    
+	std::string userList = "";
     Client* op = channel->getOperator();
     for (size_t i = 0; i < clients.size(); i++) {
         if (i != 0)
@@ -334,4 +329,18 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
     sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
 
     sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
+}
+
+void	Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
+    const std::vector<Client*> &clients = channel->getClients();
+    for (size_t i = 0; i < clients.size(); i++) {
+        Client *otherClient = clients[i];
+		std::cout << "Other client is: " << otherClient->getNick() << " and user " <<  otherClient->getUser() << std::endl;
+		std::cout << "client is: " << client->getNick() << std::endl;
+        if (otherClient != client) {
+			std::cout << "entered" << std::endl;
+            sendCMD(otherClient->getFd(), msg);
+        }
+    }
+	return ;
 }

@@ -50,6 +50,7 @@ class Server {
 		int		handlePingCMD(IRCCommand cmd, Client *client);
 		int 	handlePartCMD(IRCCommand cmd, Client *client);
 		int 	handleNoticeCMD(IRCCommand cmd, Client *client);
+		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
 };
 
 void 	handleSIGINT(int sig);

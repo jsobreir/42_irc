@@ -133,25 +133,25 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 
 		// Check if the client is banned from the channel
 		if (channel && channel->isBanned(client)) {
-			sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(channelName));
+			sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
 			continue;
 		}
 
 		// Check if the channel is full
 		if (channel && channel->isFull()) {
-			sendCMD(client->getFd(), ERR_CHANNELISFULL(channelName));
+			sendCMD(client->getFd(), ERR_CHANNELISFULL(client->getNick(), channelName));
 			continue;
 		}
 
 		// Check if the channel is invite-only
 		if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
-			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(channelName));
+			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(client->getNick(), channelName));
 			continue;
 		}
 
 		// Check if the client has exceeded the channel limit
 		if (client->getChannelCount() >= MAX_CHANNELS) {
-			sendCMD(client->getFd(), ERR_TOOMANYCHANNELS(channelName));
+			sendCMD(client->getFd(), ERR_TOOMANYCHANNELS(client->getNick(), channelName));
 			continue;
 		}
 
@@ -185,12 +185,7 @@ int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
 
         // Send QUIT to other clients in the channel *before* removing the client
         if (chan->hasClient(client)) {
-            std::vector<Client *> channelClients = chan->getClients();
-            for (size_t i = 0; i < channelClients.size(); ++i) {
-                if (channelClients[i] != client) {
-                    sendCMD(channelClients[i]->getFd(), quitMsg);
-                }
-            }
+			broadcastMsg(chan, quitMsg, client);
             chan->removeClient(client);
         }
     }
@@ -225,20 +220,20 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 	if (target[0] == '#') {
 		Channel *channel = getChannel(target);
 		if (!channel) {
-			// TODO - Send error: no such channel
-			return 0;
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(target));
+			return 1;
 		}
-
+		
+		if (channel->hasClient(client) == false) {
+			#if DEBUG
+				std::cout << "[DBG] PRIVMSG - Client not on channel." << std::endl;
+			#endif
+			sendCMD(client->getFd(), ERR_CANNOTSENDTOCHAN(client->getNick(), channel->getName()));
+			return 1;
+		}
 		// Construct the full message
 		std::string fullMsg = ":" + client->getNick() + " PRIVMSG " + target + " :" + message + "\r\n";
-
-		// Broadcast to all clients in the channel **except the sender**
-		std::vector<Client *> channelClients = channel->getClients();
-		for (size_t i = 0; i < channelClients.size(); ++i) {
-			if (channelClients[i]->getFd() != client->getFd()) {
-				send(channelClients[i]->getFd(), fullMsg.c_str(), fullMsg.length(), 0);
-			}
-		}
+		broadcastMsg(channel, fullMsg, client);
 	}
 	return 0;
 }
@@ -276,11 +271,12 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 			return 1;
 		}
 		if (channel->removeClient(client) == 1) {
-			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick, channelName));
+			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), channelName));
 			return 1;
 		}
-		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART #" + channelName + "\r\n";
-		sendCMD(client->getFd(), partMsg);
+		std::cout << "We are here" << std::endl;
+		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART " + channelName + "\r\n";
+		broadcastMsg(channel, partMsg, client);
 	}
 	return 0;
 }
