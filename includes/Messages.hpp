@@ -83,9 +83,9 @@
 
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
 
-#define ERR_INVITEONLYCHAN(nick, channelName) ("473 " + nick + channelName + " :Cannot join channel (+b)\n")
+#define ERR_INVITEONLYCHAN(nick, channelName) ("473 " + nick + channelName + " :Cannot join channel (+i)\n")
 
-#define ERR_BANNEDFROMCHAN(nick, channelName) ("474 " + nick + channelName + " :Cannot join channel (+b)\n")
+//#define ERR_BANNEDFROMCHAN(nick, channelName) ("474 " + nick + channelName + " :Cannot join channel (+b)\n")
 
 #define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 

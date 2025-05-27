@@ -173,47 +173,47 @@ Client* Channel::getOperator() const {
 
 #include <fnmatch.h> // POSIX wildcard matching
 
-bool Channel::isBanned(Client* client) const {
-	// Check basic nickname ban
-	if (std::find(_bannedClients.begin(), _bannedClients.end(), client->getNick()) != _bannedClients.end())
-		return true;
+// bool Channel::isBanned(Client* client) const {
+// 	// Check basic nickname ban
+// 	if (std::find(_bannedClients.begin(), _bannedClients.end(), client->getNick()) != _bannedClients.end())
+// 		return true;
 
-	// Build full identity: nick!user@host
-	std::string identity = client->getNick() + "!" + client->getUser() + "@localhost"; // change host if needed
+// 	// Build full identity: nick!user@host
+// 	std::string identity = client->getNick() + "!" + client->getUser() + "@localhost"; // change host if needed
 
-	// Check ban masks with wildcard support
-	for (size_t i = 0; i < _banMasks.size(); ++i) {
-		if (fnmatch(_banMasks[i].c_str(), identity.c_str(), 0) == 0)
-			return true;
-	}
+// 	// Check ban masks with wildcard support
+// 	for (size_t i = 0; i < _banMasks.size(); ++i) {
+// 		if (fnmatch(_banMasks[i].c_str(), identity.c_str(), 0) == 0)
+// 			return true;
+// 	}
 
-	return false;
-}
+// 	return false;
+// }
 
-void Channel::addBanMask(const std::string& mask) {
-	if (std::find(_banMasks.begin(), _banMasks.end(), mask) == _banMasks.end()) {
-		_banMasks.push_back(mask);
-	}
-}
+// void Channel::addBanMask(const std::string& mask) {
+// 	if (std::find(_banMasks.begin(), _banMasks.end(), mask) == _banMasks.end()) {
+// 		_banMasks.push_back(mask);
+// 	}
+// }
 
-void Channel::removeBanMask(const std::string& mask) {
-	_banMasks.erase(std::remove(_banMasks.begin(), _banMasks.end(), mask), _banMasks.end());
-}
+// void Channel::removeBanMask(const std::string& mask) {
+// 	_banMasks.erase(std::remove(_banMasks.begin(), _banMasks.end(), mask), _banMasks.end());
+// }
 
-const std::vector<std::string>& Channel::getBanMasks() const {
-	return _banMasks;
-}
+// const std::vector<std::string>& Channel::getBanMasks() const {
+// 	return _banMasks;
+// }
 
 
-void Channel::banClient(const std::string& nickname) {
-    if (std::find(_bannedClients.begin(), _bannedClients.end(), nickname) == _bannedClients.end()) {
-        _bannedClients.push_back(nickname);
-    }
-}
+// void Channel::banClient(const std::string& nickname) {
+//     if (std::find(_bannedClients.begin(), _bannedClients.end(), nickname) == _bannedClients.end()) {
+//         _bannedClients.push_back(nickname);
+//     }
+// }
 
-void Channel::unbanClient(const std::string& nickname) {
-    _bannedClients.erase(std::remove(_bannedClients.begin(), _bannedClients.end(), nickname), _bannedClients.end());
-}
+// void Channel::unbanClient(const std::string& nickname) {
+//     _bannedClients.erase(std::remove(_bannedClients.begin(), _bannedClients.end(), nickname), _bannedClients.end());
+// }
 
 bool Channel::isFull() const {
     return _userLimit > 0 && _channelClients.size() >= _userLimit;

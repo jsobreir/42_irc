@@ -132,10 +132,10 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		}
 
 		// Check if the client is banned from the channel
-		if (channel && channel->isBanned(client)) {
-			sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
-			continue;
-		}
+		// if (channel && channel->isBanned(client)) {
+		// 	sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
+		// 	continue;
+		// }
 
 		// Check if the channel is full
 		if (channel && channel->isFull()) {

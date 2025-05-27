@@ -1,170 +1,115 @@
 #include "IRC.hpp"
 
+Client* Server::getClientByNick(const std::string& nickname) {
+	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+		if ((*it)->getNick() == nickname)
+			return *it;
+	}
+	return NULL;
+}
+
 int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
-	
-	if (!cmd.args.size()) {
-		// TODO - Send error: no channel specified
-        #if DEBUG
-			std::cout << "Entered No channel name if" << std::endl;
-        #endif
+	if (cmd.args.empty()) {
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
 		return 0;
 	}
-	std::string channelName = cmd.args[0];
 
+	std::string channelName = cmd.args[0];
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-        #if DEBUG
-            std::cout << "Entered No channel name if" << std::endl;
-        #endif
 		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(channelName));
 		return 0;
 	}
-	if (cmd.args.size() < 2 || (cmd.args[1][0] != '+' && cmd.args[1][0] != '-') || cmd.args[1].size() < 2) {
-		// TODO - Invalid mode format
-        #if DEBUG
-            std::cout << "[DBG] Invalid mode format" << std::endl;
-        #endif
-		return 0;
-	}
 
-	char mode = cmd.args[1][1];
-	bool isAdding = (cmd.args[1][0] == '+');
-	// Check if the sender is an operator in the channel
 	if (!channel->isOperator(client)) {
-		#if DEBUG
-		std::cout << "[DBG] Is operator" << std::endl;
-        #endif
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick() , channel->getName()));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channel->getName()));
 		return 0;
 	}
 
-	if (mode == 'o') {
-		if (cmd.args.size() < 3) {
-			std::string msg = "Please enter an user.\r\n";
+	std::string modeChangeSummary = ":" + client->getNick() + " MODE " + channelName + " ";
+	std::string paramSummary;
 
-			send(client->getFd(), msg.c_str(), msg.size(), 0);
-			return 0;
-		}
-		std::string targetNick = cmd.args[2];
-        #if DEBUG
-            std::cout << "[DBG] Mode o" << std::endl;
-        #endif
+	bool adding = true;
+	size_t i = 1;
 
-		Client* targetClient = NULL;
-		for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-			if ((*it)->getNick() == targetNick) {
-				targetClient = *it;
-				break;
-			}
-		}
-		if (!targetClient) {
-			// TODO - Send error: no such nick
-			return 0;
-		}
+	while (i < cmd.args.size()) {
+		const std::string& token = cmd.args[i];
 
-		if (isAdding) {
-			channel->addOperator(targetClient);
-		} else {
-			channel->removeOperator(targetClient);
-		}
+		// Check for mode string (starts with + or -)
+		if (token[0] == '+' || token[0] == '-') {
+			for (size_t j = 0; j < token.size(); ++j) {
+				char c = token[j];
+				if (c == '+') {
+					adding = true;
+					modeChangeSummary += "+";
+				} else if (c == '-') {
+					adding = false;
+					modeChangeSummary += "-";
+				} else {
+					switch (c) {
+						case 'i':
+							channel->setInviteOnly(adding);
+							break;
 
-		// Broadcast mode change
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + cmd.args[1] + " " + targetNick + "\r\n";
-		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-		}
-	} else if (mode == 'i') {
-		if (isAdding) {
-			channel->setInviteOnly(true);
-		} else {
-			channel->setInviteOnly(false);
-		}
-
-		// Broadcast invite-only mode change (no targetNick needed)
-		std::string msg = ":" + client->getNick() + " MODE " + channelName + " " + cmd.args[1] + "\r\n";
-		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-			send(channel->getClients()[i]->getFd(), msg.c_str(), msg.length(), 0);
-		}
-	} else if (mode == 'k') {
-		if (!channel->isOperator(client)) {
-			std::string err = ":server 482 " + client->getNick() + " " + channelName + " :You're not channel operator\r\n";
-			send(client->getFd(), err.c_str(), err.length(), 0);
-			return 0;
-		}
-		if (cmd.args.size() < 3) {
-			std::cout << "Bad Usage" << std::endl;
-			return 1;
-		}
-		std::string password = cmd.args[2];
-		
-		if (isAdding) {
-			if (password.empty()) {
-				std::string err = ":server 696 " + client->getNick() + " " + channelName + " +k :Key (password) required\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return 0;
-			}
-			channel->setKey(password);
-		} else {
-			channel->setKey(""); // clear password
-		}
-
-		// Broadcast the change
-		std::string reply = ":" + client->getNick() + " MODE " + channelName + " " + mode;
-		if (!password.empty())
-			reply += " " + password;
-		reply += "\r\n";
-
-		for (size_t i = 0; i < channel->getClients().size(); ++i) {
-			send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
-		}
-	}else if (mode == 'l') {
-		if (isAdding) {
-			// Ensure parameter for +l (user limit) is provided
-			if (cmd.args.size() < 3) {
-				std::string err = ":server 461 " + client->getNick() + " MODE :Not enough parameters for +l\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return 0;
-			}
-	
-			std::string limitStr = cmd.args[2];
-			for (size_t i = 0; i < limitStr.size(); ++i) {
-				if (!isdigit(limitStr[i])) {
-					std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Invalid limit value\r\n";
-					send(client->getFd(), err.c_str(), err.length(), 0);
-					return 0;
+						case 'o': {
+							if (i + 1 >= cmd.args.size()) break;
+							std::string targetNick = cmd.args[++i];
+							Client* targetClient = getClientByNick(targetNick);
+							if (!targetClient) break;
+							if (adding)
+								channel->addOperator(targetClient);
+							else
+								channel->removeOperator(targetClient);
+							paramSummary += " " + targetNick;
+							break;
+						}
+						case 'k': {
+							if (adding) {
+								if (i + 1 >= cmd.args.size()) break;
+								std::string key = cmd.args[++i];
+								channel->setKey(key);
+								paramSummary += " " + key;
+							} else {
+								channel->setKey("");
+							}
+							break;
+						}
+						case 'l': {
+							if (adding) {
+								if (i + 1 >= cmd.args.size()) break;
+								std::string limitStr = cmd.args[++i];
+								int limit = std::atoi(limitStr.c_str());
+								if (limit > 0)
+									channel->setUserLimit(limit);
+								paramSummary += " " + limitStr;
+							} else {
+								channel->setUserLimit(0);
+							}
+							break;
+						}
+						default:
+							sendCMD(client->getFd(), ERR_UNKNOWNMODE(std::string(1, c)));
+							break;
+					}
 				}
 			}
-	
-			int limit = std::atoi(limitStr.c_str());
-			if (limit <= 0) {
-				std::string err = ":server 696 " + client->getNick() + " " + channelName + " +l :Limit must be greater than 0\r\n";
-				send(client->getFd(), err.c_str(), err.length(), 0);
-				return 0;
-			}
-	
-			channel->setUserLimit(limit);
-	
-			// Broadcast limit set
-			std::string msg = ":" + client->getNick() + " MODE " + channelName + " +l " + limitStr + "\r\n";
-			const std::vector<Client*>& clients = channel->getClients();
-			for (size_t i = 0; i < clients.size(); ++i)
-				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+			++i; // ✅ increment here after processing the whole token
 		} else {
-			// Remove the limit
-			channel->setUserLimit(0);
-	
-			std::string msg = ":" + client->getNick() + " MODE " + channelName + " -l\r\n";
-			const std::vector<Client*>& clients = channel->getClients();
-			for (size_t i = 0; i < clients.size(); ++i)
-				send(clients[i]->getFd(), msg.c_str(), msg.length(), 0);
+			// It’s a parameter without an associated mode string — skip it
+			++i; // ✅ prevent infinite loop
 		}
 	}
-	else {
-		sendCMD(client->getFd(), ERR_UNKNOWNMODE(cmd.args[1]));
-		return 0;
+
+	std::string finalMsg = modeChangeSummary + paramSummary + "\r\n";
+	const std::vector<Client*>& clients = channel->getClients();
+	for (size_t j = 0; j < clients.size(); ++j) {
+		send(clients[j]->getFd(), finalMsg.c_str(), finalMsg.length(), 0);
 	}
+
 	return 0;
 }
+
+
 
 int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
     // USAGE: /KICK <channel> <nickname> [:reason...]

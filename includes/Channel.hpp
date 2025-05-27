@@ -41,13 +41,13 @@ class Channel {
 		bool hasClient(Client* client) const;
 		int removeClient(Client* client);
 
-        bool isBanned(Client* client) const;
-        void banClient(const std::string& nickname);
-        void unbanClient(const std::string& nickname);
+        //bool isBanned(Client* client) const;
+        //void banClient(const std::string& nickname);
+        //void unbanClient(const std::string& nickname);
 
-		const std::vector<std::string>& getBanMasks() const;
-		void addBanMask(const std::string& mask);
-		void removeBanMask(const std::string& mask);
+		//const std::vector<std::string>& getBanMasks() const;
+		//void addBanMask(const std::string& mask);
+		//void removeBanMask(const std::string& mask);
 
 
         bool isFull() const;
