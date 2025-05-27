@@ -76,7 +76,6 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1) {
-		// ERR_NEEDMOREPARAMS (461): Not enough parameters
 		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
 		return 0;
 	}
@@ -219,8 +218,8 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 	if (target[0] == '#') {
 		Channel *channel = getChannel(target);
 		if (!channel) {
-			// TODO - Send error: no such channel
-			return 0;
+			std::string err = ERR_NOSUCHCHANNEL(target);
+			send(client->getFd(), err.c_str(), err.length(), 0);			return 0;
 		}
 
 		// Construct the full message

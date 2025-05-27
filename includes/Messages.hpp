@@ -24,15 +24,15 @@
 
 #define RPL_CHANNELMODEIS(channel, mode, params) ("324 " + channel + " " + mode + " " + params + "\n")
 
-#define RPL_NOTOPIC(channel) ("331 " + channel + " :No topic is set\n")
+#define RPL_NOTOPIC(nick, channel) (":server 331 " + nick + " " + channel + " :No topic is set\r\n")
 
-#define RPL_TOPIC(channel, topic) ("332" + channel + " :" + topic + "\r\n")
+#define RPL_TOPIC(nick, channel, topic) (":server 332 " + nick + " " + channel + " :" + topic + "\r\n")
 
 #define RPL_TOPIC2(nickname, channel, topic) ("332 " + nickname + " " + channel + " :" + topic + "\r\n")
 
 #define RPL_TOPICWHOTIME(channel, nick, time) (":" + _serverName + " 333 " + client->getNick() + " " + channelName + " " + time + "\r\n")
 
-#define RPL_INVITING(nick, channel) ("341" + client->getNick() + " " + channel + "\r\n")
+#define RPL_INVITING(serverName, inviterNick, inviteeNick, channelName) (std::string(":") + serverName + " 341 " + inviterNick + " " + inviteeNick + " " + channelName + "\r\n")
 
 #define RPL_WHOREPLY(nickname, host,  channelname, user, realname, flag) (":" + host + " 352 " + client->getNick() + " " + channelname + " " + host + " " + SERVER_NAME + " " + user + " " + flag + " :2 " + realname + "\r\n")
 
@@ -46,12 +46,12 @@
 #define RPL_MOTDSTART(nick) "375 " + client->getNick() + " - " + _serverName + " Message of the day - \r\n"
 #define RPL_MOTD(nick) "372 " + client->getNick() + "  Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n"
 #define RPL_ENDOFMOTD(nick) "376 " + client->getNick() + "End of /MOTD command.\r\n"
-
+#define NTFY_CLIENTISINVITED(inviterNick, inviteeNick, channelName) (":" + inviterNick + " INVITE " + inviteeNick + " :" + channelName + "\r\n")
 /*-----------------------------*/
 
 
 /*---------Error replies-------*/
-#define ERR_NOSUCHNICK(nick) ("401 " + client->getNick() + " :No such nick/channel\n")
+#define ERR_NOSUCHNICK(clientNick, targetNick) (":" + _serverName + " 401 " + clientNick + " " + targetNick + " :No such nick/channel\r\n")
 
 #define ERR_NOSUCHCHANNEL(channel) ("403 " + channel + " :No such channel\n")
 
@@ -67,11 +67,13 @@
 
 #define ERR_NICKCOLLISION(nick) ("436 " + client->getNick() + " :Nickname collision KILL\n")
 
+#define ERR_USERNOTINCHANNEL(clientNick, targetNick, channelName) ("441 " + clientNick + " " + targetNick + " " + channelName + " :They aren't on that channel\r\n")
+
 #define ERR_NOTONCHANNEL(nick, channel) ("442 " + client->getNick() + " " + channel + " :You're not on that channel\n")
 
 #define ERR_USERONCHANNEL(nick, channel) ("443 " + client->getNick() + " " + channel + " :is already on channel\n")
 
-#define ERR_NEEDMOREPARAMS(command) ("461 " + command + " :Not enough parameters\n")
+#define ERR_NEEDMOREPARAMS(command) (std::string(":server 461 ") + command + " :Not enough parameters\r\n")
 
 #define ERR_ALREADYREGISTRED "462 :You may not reregister\n"
 
@@ -81,13 +83,13 @@
 
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\n")
 
-//#define ERR_INVITEONLYCHAN(channelName) ("473 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
 #define ERR_INVITEONLYCHAN(nick, channelName) (":server 473 " + client->getNick() + " " + channelName + " :Cannot join channel (+i)\r\n")
 
 #define ERR_BANNEDFROMCHAN(channelName) ("474 " + client->getNick() + channelName + " :Cannot join channel (+b)\n")
 
 #define ERR_BADCHANMASK(channel) ("476 " + channelName + " :Invalid channel name\r\n")
 
-//#define ERR_CHANOPRIVSNEEDED(channel) ("482 " + channel + " :You're not channel operator\n")
 #define ERR_CHANOPRIVSNEEDED(client, channel) (":" + _serverName + " 482 " + client + " " + channel + " :You're not channel operator\r\n")
+
+#define ERR_INVALIDMODEPARAM(clientNick, target, modeChar, parameter, description) (":server 696 " + clientNick + " " + target + " " + modeChar + " " + parameter + " :" + description + "\r\n")
 /*-----------------------------*/
