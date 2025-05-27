@@ -280,9 +280,3 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	}
 	return 0;
 }
-
-int 	Server::handleNoticeCMD(IRCCommand cmd, Client *client) {
-	(void)cmd;
-	(void)client;
-	return 0;
-}
