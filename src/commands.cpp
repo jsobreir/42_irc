@@ -26,7 +26,7 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size()) {
 		std::string key = cmd.args[0];
 		if (key != _password) {
-			sendCMD(client->getFd(), ERR_PASSWDMISMATCH);
+			sendCMD(client->getFd(), ERR_PASSWDMISMATCH());
 			sendCMD(client->getFd(), "ERROR :Wrong Password");
 			int fd = client->getFd();
 			close(fd);
@@ -53,19 +53,19 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 	if (!client->getNick().empty() && !client->getUser().empty()) {
 		// Welcome message
-		std::string welcome = RPL_WELCOME(client->getNick(), _serverName);
+		std::string welcome = RPL_WELCOME(client->getNick());
 		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
 
 		// Host information
-		std::string hostInfo = RPL_YOURHOST(_serverName);
+		std::string hostInfo = RPL_YOURHOST();
 		send(client->getFd(), hostInfo.c_str(), hostInfo.length(), 0);
 
 		// Server creation date
-		std::string creationDate = RPL_CREATED(_creationDate);
+		std::string creationDate = RPL_CREATED();
 		send(client->getFd(), creationDate.c_str(), creationDate.length(), 0);
 
 		// Server capabilities
-		std::string capabilities = RPL_MYINFO(_serverName, client->getNick(), _serverVersion);
+		std::string capabilities = RPL_MYINFO(client->getNick(), _serverVersion);
 		send(client->getFd(), capabilities.c_str(), capabilities.length(), 0);
 
 		// Message of the day (MOTD)

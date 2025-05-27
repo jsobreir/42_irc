@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "Client.hpp"
 #include "IRC.hpp"
+#include "Messages.hpp"
 
 #define MAX_CLIENTS 1024
 
@@ -16,6 +17,7 @@ Server::Server(int port, std::string password)
 	char buffer[20];
 	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
 	_creationDate = buffer;
+	_serverName_g = _serverName;
 }
 
 const std::string &Server::getPassword() const {

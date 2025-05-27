@@ -58,7 +58,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 		if (!targetClient) {
-			// TODO - Send error: no such nick
+			sendCMD(client->getFd(), ERR_NOSUCHNICK(targetNick));
 			return 0;
 		}
 
@@ -117,7 +117,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		for (size_t i = 0; i < channel->getClients().size(); ++i) {
 			send(channel->getClients()[i]->getFd(), reply.c_str(), reply.length(), 0);
 		}
-	}else if (mode == 'l') {
+	} else if (mode == 'l') {
 		if (isAdding) {
 			// Ensure parameter for +l (user limit) is provided
 			if (cmd.args.size() < 3) {
