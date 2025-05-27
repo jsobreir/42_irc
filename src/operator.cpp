@@ -50,7 +50,6 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 						case 'i':
 							channel->setInviteOnly(adding);
 							break;
-
 						case 'o': {
 							if (i + 1 >= cmd.args.size()) break;
 							std::string targetNick = cmd.args[++i];
