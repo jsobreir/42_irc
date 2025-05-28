@@ -1,13 +1,5 @@
 #include "IRC.hpp"
 
-Client* Server::getClientByNick(const std::string& nickname) {
-	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		if ((*it)->getNick() == nickname)
-			return *it;
-	}
-	return NULL;
-}
-
 int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
 		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
