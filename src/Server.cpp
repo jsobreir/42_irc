@@ -302,27 +302,22 @@ Channel* Server::getChannel(std::string channelName) {
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
 
-	// Check if the channel already exists
 	Channel *channel = getChannel(channelName);
 	if (!channel) {
-		// Create a new channel
 		Channel *newChannel = new Channel();
 		newChannel->setName(channelName);
 		newChannel->addClient(client);
-		_channels.push_back(newChannel); // Store the pointer in the vector
+		_channels.push_back(newChannel);
 		channel = newChannel;
 	} else {
-		// Add the client to the existing channel
 		channel->addClient(client);
 	}
 
-	// Increment the client's joined channels count
 	client->incrementJoinedChannels();
 
-    // Send the JOIN message itself — this tells the client it has joined the channel
-    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost";
     std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+    sendCMD(client->getFd(), joinMsg);
 
 	broadcastMsg(channel, joinMsg, client);
 
@@ -337,7 +332,7 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
         if (i != 0)
             userList += " ";
         if (clients[i] == op)
-            userList += "@";  // prefix operator with @
+            userList += "@";
         userList += clients[i]->getNick();
     }
     sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));

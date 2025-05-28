@@ -79,7 +79,6 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1) {
-		// ERR_NEEDMOREPARAMS (461): Not enough parameters
 		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
 		return 0;
 	}
@@ -99,7 +98,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		channelName = channelName.substr(start, end - start + 1);
 		if (cmd.args.size() == 2)
 			key = cmd.args[1];
-		// Check if the client is banned from the channel
 		Channel* channel = getChannel(channelName);
 		if (channel && !channel->getKey().empty()) {
 			std::cout << "Key =" << key << std::endl;
@@ -122,11 +120,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 
-		// Check if the client is banned from the channel
-		// if (channel && channel->isBanned(client)) {
-		// 	sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
-		// 	continue;
-		// }
 
 		if (channel && channel->isFull()) {
 			sendCMD(client->getFd(), ERR_CHANNELISFULL(client->getNick(), channelName));
@@ -143,6 +136,9 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			continue;
 		}
 
+		#if DEBUG
+			std::cout << "[DBG] Joining channel. " << std::endl;	
+		#endif
 		joinChannel(client, channelName);
 		#if DEBUG
 			std::cout << "[DBG]Client " << client->getFd() << " joined channel " << channelName << std::endl;
@@ -261,9 +257,13 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), channelName));
 			return 1;
 		}
-		std::cout << "We are here" << std::endl;
-		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART " + channelName + "\r\n";
+		std::string reason;
+		for (size_t i = 1; i < cmd.args.size(); i++) {
+			reason.append(cmd.args[i]);
+		}
+		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART " + channelName + " :" + reason + "\r\n";
 		broadcastMsg(channel, partMsg, client);
+		sendCMD(client->getFd(), partMsg);
 	}
 	return 0;
 }
