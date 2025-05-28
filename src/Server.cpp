@@ -17,7 +17,6 @@ Server::Server(int port, std::string password)
 	char buffer[20];
 	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
 	_creationDate = buffer;
-	_serverName_g = _serverName;
 }
 
 const std::string &Server::getPassword() const {
@@ -66,6 +65,14 @@ Server::~Server() {
 
 int Server::getServerFd(void) const {
 	return _server_fd;
+}
+
+std::string Server::getServerName() const {
+	return _serverName;
+}
+
+std::string Server::getCreationDate() const {
+	return _creationDate;
 }
 
 void handleSIGINT(int sig) {
@@ -261,6 +268,14 @@ Client *Server::getClient(int fd)
 		if (_clients[i]->getFd() == fd) {
 			return _clients[i];
 		}
+	}
+	return NULL;
+}
+
+Client 	*Server::getClientByNick(const std::string &nickname) {
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		if ((*it)->getNick() == nickname)
+			return *it;
 	}
 	return NULL;
 }

@@ -23,19 +23,23 @@ class Server {
 		Server (Server const &other); 
 		Server &operator=(Server const &other);
 		~Server();
-		int getServerFd(void) const;
-		void start();
-		void acceptNewClient(struct pollfd fds[]);
-		void handleClientData(struct pollfd fds[]);
-		int handleClientMessage(int client_fd, const char *msg);
-		void sendCMD(int fd, std::string msg);
-		void closeAllClientFds(void);
-		Client *getClient(int fd);
-		void 	removeClient(Client *client);
-		Client *getClientByNick(const std::string &nickname);
+		
+		std::string getCreationDate() const;
+		std::string getServerName() const;
+		int 	getServerFd(void) const;
+		Client 	*getClient(int fd);
+		Client 	*getClientByNick(const std::string &nickname);
 		Channel *getChannel(std::string channelName);
+		const 	std::string &getPassword() const;
+		void 	start();
+		void 	acceptNewClient(struct pollfd fds[]);
+		void 	handleClientData(struct pollfd fds[]);
+		int 	handleClientMessage(int client_fd, const char *msg);
+		void 	sendCMD(int fd, std::string msg);
+		void 	closeAllClientFds(void);
+		void 	removeClient(Client *client);
 		void 	joinChannel(Client *client, const std::string &channelName);
-		const std::string &getPassword() const;
+
 		int 	handleCapCMD(IRCCommand cmd, Client *client);
 		int 	handlePassCMD(IRCCommand cmd, Client *client);
 		int 	handleNickCMD(IRCCommand cmd, Client *client);
@@ -49,7 +53,6 @@ class Server {
 		int		handleTopicOperatorCMD(IRCCommand cmd, Client *client);
 		int		handlePingCMD(IRCCommand cmd, Client *client);
 		int 	handlePartCMD(IRCCommand cmd, Client *client);
-		int 	handleNoticeCMD(IRCCommand cmd, Client *client);
 		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
 };
 
