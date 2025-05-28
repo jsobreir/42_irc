@@ -20,9 +20,6 @@ int Server::handleCapCMD(IRCCommand cmd, Client *client) {
 }
 
 int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
-	#if DEBUG
-		std::cout << "[DBG]Setting password for client " << client->getFd() << std::endl;
-	#endif
 	if (cmd.args.size()) {
 		std::string key = cmd.args[0];
 		if (key != _password) {
@@ -258,8 +255,13 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 			return 1;
 		}
 		std::string reason;
-		for (size_t i = 1; i < cmd.args.size(); i++) {
-			reason.append(cmd.args[i]);
+		if (cmd.args.size() > 1) {
+			reason = cmd.args[1];
+			if (!reason.empty() && reason[0] == ':')
+				reason = reason.substr(1);
+			for (size_t i = 2; i < cmd.args.size(); i++) {
+				reason += " " + cmd.args[i];
+			}
 		}
 		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART " + channelName + " :" + reason + "\r\n";
 		broadcastMsg(channel, partMsg, client);

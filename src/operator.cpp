@@ -30,7 +30,6 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	while (i < cmd.args.size()) {
 		const std::string& token = cmd.args[i];
 
-		// Check for mode string (starts with + or -)
 		if (token[0] == '+' || token[0] == '-') {
 			for (size_t j = 0; j < token.size(); ++j) {
 				char c = token[j];
@@ -87,10 +86,9 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 					}
 				}
 			}
-			++i; // ✅ increment here after processing the whole token
+			++i;
 		} else {
-			// It’s a parameter without an associated mode string — skip it
-			++i; // ✅ prevent infinite loop
+			++i;
 		}
 	}
 
@@ -115,7 +113,6 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
     std::string channelName = cmd.args[0];
     std::string targetNick = cmd.args[1];
 
-    // Check required params
     Channel* channel = getChannel(channelName);
     if (!channel) {
         std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
@@ -129,7 +126,6 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
         return 0;
     }
 
-    // Locate target client from the channel
     Client* targetClient = NULL;
     const std::vector<Client*>& clients = channel->getClients();
     for (size_t i = 0; i < clients.size(); ++i) {
@@ -145,7 +141,6 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
         return 0;
     }
 
-    // Parse optional reason
     std::string reason;
     if (cmd.args.size() > 2) {
         reason = cmd.args[2];
