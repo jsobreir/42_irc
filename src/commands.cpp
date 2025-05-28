@@ -52,23 +52,18 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 	#endif
 
 	if (!client->getNick().empty() && !client->getUser().empty()) {
-		// Welcome message
 		std::string welcome = RPL_WELCOME(client->getNick());
 		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
 
-		// Host information
 		std::string hostInfo = RPL_YOURHOST();
 		send(client->getFd(), hostInfo.c_str(), hostInfo.length(), 0);
 
-		// Server creation date
 		std::string creationDate = RPL_CREATED();
 		send(client->getFd(), creationDate.c_str(), creationDate.length(), 0);
 
-		// Server capabilities
 		std::string capabilities = RPL_MYINFO(client->getNick(), _serverVersion);
 		send(client->getFd(), capabilities.c_str(), capabilities.length(), 0);
 
-		// Message of the day (MOTD)
 		std::string motdStart = RPL_MOTDSTART(client->getNick());
 		send(client->getFd(), motdStart.c_str(), motdStart.length(), 0);
 
@@ -124,10 +119,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		std::string key;
 		if (cmd.args.size() > 2) {
 			std::stringstream buf(cmd.args[2]);
-			// Check if a key is provided for this channel
 			if (std::getline(buf, key, ',')) {
-				// Validate the key if necessary (e.g., compare with stored channel key)
-				// TODO: Add key validation logic if required
 			}
 		}
 

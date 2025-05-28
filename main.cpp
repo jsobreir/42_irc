@@ -10,6 +10,8 @@
 #include "IRC.hpp"
 
 Server *g_server = NULL;
+std::string _creationDate_g;
+std::string _serverName_g;
 
 int main(int argc, char **argv) {
 	if (argc != 3) {
@@ -28,6 +30,8 @@ int main(int argc, char **argv) {
 	{
 		Server server(port, password);
 		g_server = &server;
+		_creationDate_g = g_server->getCreationDate();
+		_serverName_g = g_server->getServerName();
 		server.start();
 	}
 	catch(const std::exception& e)

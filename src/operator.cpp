@@ -295,7 +295,5 @@ int		Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 }
 
 int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
-	(void)cmd;
-	(void) client;
-	return 1;
+	
 }

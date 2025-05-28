@@ -17,7 +17,6 @@ Server::Server(int port, std::string password)
 	char buffer[20];
 	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
 	_creationDate = buffer;
-	_serverName_g = _serverName;
 }
 
 const std::string &Server::getPassword() const {
@@ -66,6 +65,14 @@ Server::~Server() {
 
 int Server::getServerFd(void) const {
 	return _server_fd;
+}
+
+std::string Server::getServerName() const {
+	return _serverName;
+}
+
+std::string Server::getCreationDate() const {
+	return _creationDate;
 }
 
 void handleSIGINT(int sig) {

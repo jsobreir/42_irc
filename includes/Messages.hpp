@@ -2,7 +2,6 @@
 
 #include <string>
 
-// Example global constants (define these somewhere in your server code)
 extern std::string _serverName_g;
 extern std::string _creationDate_g;
 
