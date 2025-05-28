@@ -34,7 +34,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		#if DEBUG
 		std::cout << "[DBG] Is operator" << std::endl;
         #endif
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick() , channel->getName()));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
 		return 0;
 	}
 
@@ -264,7 +264,7 @@ int		Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 
 		// Only allow topic change if the client is operator in the channel
 		if (!channel->isOperator(client)) {
-			sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick() , channelName));
+			sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channelName));
 			return 0;
 		}
 
@@ -295,5 +295,36 @@ int		Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 }
 
 int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
-	
+	if (cmd.args.size() < 2) {
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		return 1;
+	}
+	Channel *channel = getChannel(cmd.args[1]);
+	if (channel == NULL) {
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(cmd.args[1]));
+		return 1;
+	}
+	if (channel->hasClient(client) == false) {
+		sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), channel->getName()));
+		return 1;
+	}
+	if (channel->isInviteOnly() && !channel->isOperator(client)) {
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
+		return 1;	
+	}
+	Client *targetClient = getClientByNick(cmd.args[0]);
+	if (!targetClient) {
+		sendCMD(client->getFd(), ERR_NOSUCHNICK(cmd.args[0]));
+		return 1;
+	}
+	if (channel->hasClient(targetClient)) {
+		sendCMD(client->getFd(), ERR_USERONCHANNEL(targetClient->getNick(), channel->getName()));
+		return 1;	
+	}
+	sendCMD(client->getFd(), RPL_INVITING(targetClient->getNick(), channel->getName()));
+	std::string msg = ":" + client->getNick() + "!" + client->getUser() + "@localhost INVITE " + targetClient->getNick() + " :" + channel->getName() + "\r\n";
+
+	sendCMD(targetClient->getFd(), msg);
+	joinChannel(targetClient, channel->getName());
+	return 0;
 }

@@ -26,7 +26,7 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size()) {
 		std::string key = cmd.args[0];
 		if (key != _password) {
-			sendCMD(client->getFd(), ERR_PASSWDMISMATCH());
+			sendCMD(client->getFd(), ERR_PASSWDMISMATCH);
 			sendCMD(client->getFd(), "ERROR :Wrong Password");
 			int fd = client->getFd();
 			close(fd);
@@ -52,19 +52,19 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 	#endif
 
 	if (!client->getNick().empty() && !client->getUser().empty()) {
-		std::string welcome = RPL_WELCOME(client->getNick());
+		std::string welcome = RPL_WELCOME(client->getNick(), getServerName());
 		send(client->getFd(), welcome.c_str(), welcome.length(), 0);
 
-		std::string hostInfo = RPL_YOURHOST();
+		std::string hostInfo = RPL_YOURHOST(getServerName());
 		send(client->getFd(), hostInfo.c_str(), hostInfo.length(), 0);
 
-		std::string creationDate = RPL_CREATED();
+		std::string creationDate = RPL_CREATED(getCreationDate());
 		send(client->getFd(), creationDate.c_str(), creationDate.length(), 0);
 
-		std::string capabilities = RPL_MYINFO(client->getNick(), _serverVersion);
+		std::string capabilities = RPL_MYINFO(getServerName(), client->getNick(), _serverVersion);
 		send(client->getFd(), capabilities.c_str(), capabilities.length(), 0);
 
-		std::string motdStart = RPL_MOTDSTART(client->getNick());
+		std::string motdStart = RPL_MOTDSTART(client->getNick(), getServerName());
 		send(client->getFd(), motdStart.c_str(), motdStart.length(), 0);
 
 		std::string motd = RPL_MOTD(client->getNick());
@@ -110,7 +110,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 				continue;
 			}
 		}
-		// Validate channel name (e.g., must start with '#')
 		if (channelName[0] != '#') {
 			sendCMD(client->getFd(), ERR_BADCHANMASK(channelName));
 			continue;
@@ -123,31 +122,26 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 
-		// Check if the client is banned from the channel
 		if (channel && channel->isBanned(client)) {
 			sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
 			continue;
 		}
 
-		// Check if the channel is full
 		if (channel && channel->isFull()) {
 			sendCMD(client->getFd(), ERR_CHANNELISFULL(client->getNick(), channelName));
 			continue;
 		}
 
-		// Check if the channel is invite-only
 		if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
 			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(client->getNick(), channelName));
 			continue;
 		}
 
-		// Check if the client has exceeded the channel limit
 		if (client->getChannelCount() >= MAX_CHANNELS) {
 			sendCMD(client->getFd(), ERR_TOOMANYCHANNELS(client->getNick(), channelName));
 			continue;
 		}
 
-		// Join the channel
 		joinChannel(client, channelName);
 		#if DEBUG
 			std::cout << "[DBG]Client " << client->getFd() << " joined channel " << channelName << std::endl;

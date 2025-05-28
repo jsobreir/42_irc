@@ -272,6 +272,14 @@ Client *Server::getClient(int fd)
 	return NULL;
 }
 
+Client 	*Server::getClientByNick(const std::string &nickname) {
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		if ((*it)->getNick() == nickname)
+			return *it;
+	}
+	return NULL;
+}
+
 void Server::removeClient(Client *client) {
 	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == client->getFd()) {

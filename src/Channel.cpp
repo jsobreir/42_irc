@@ -16,7 +16,7 @@ Channel::Channel(int fd)
 Channel::Channel(Channel const &other) {
 	_name = other._name;
 	_channelClients = other._channelClients;
-	_operators = other._operators;  // copy vector of operators
+	_operators = other._operators;
 	_topic = other._topic;
 	_inviteOnly = other._inviteOnly;
 	_topicOnlyOps = other._topicOnlyOps;
@@ -65,7 +65,6 @@ void Channel::addClient(Client* client) {
 		_channelClients.push_back(client);
 		std::cout << "Client " << client->getFd() << " joined channel " << _name << std::endl;
 
-		// If no operators yet, make this client operator
 		if (_operators.empty()) {
 			addOperator(client);
 		}
@@ -75,10 +74,6 @@ void Channel::addClient(Client* client) {
 const std::vector<Client*> &Channel::getClients() const {
 	return _channelClients;
 }
-
-// Deprecated or remove these single operator methods since you have vector of operators:
-// Client* Channel::getOperator() const { return nullptr; }
-// void Channel::setOperator(Client* client) {}
 
 void Channel::addOperator(Client* client) {
 	if (!isOperator(client)) {
@@ -168,10 +163,10 @@ int Channel::removeClient(Client* client) {
 Client* Channel::getOperator() const {
     if (!_operators.empty())
         return _operators[0];
-    return NULL; // or nullptr in C++11+
+    return NULL;
 }
 
-#include <fnmatch.h> // POSIX wildcard matching
+#include <fnmatch.h> // PERMITIDO?????????????????
 
 bool Channel::isBanned(Client* client) const {
 	// Check basic nickname ban
@@ -179,7 +174,7 @@ bool Channel::isBanned(Client* client) const {
 		return true;
 
 	// Build full identity: nick!user@host
-	std::string identity = client->getNick() + "!" + client->getUser() + "@localhost"; // change host if needed
+	std::string identity = client->getNick() + "!" + client->getUser() + "@localhost";
 
 	// Check ban masks with wildcard support
 	for (size_t i = 0; i < _banMasks.size(); ++i) {
