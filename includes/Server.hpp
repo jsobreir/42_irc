@@ -51,6 +51,7 @@ class Server {
 		int 	handlePartCMD(IRCCommand cmd, Client *client);
 		int 	handleNoticeCMD(IRCCommand cmd, Client *client);
 		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
+		bool	isValidNickname(const std::string &nick);
 };
 
 void 	handleSIGINT(int sig);

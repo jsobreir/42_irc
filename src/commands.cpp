@@ -35,11 +35,62 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	return 0;
 }
 
+bool Server::isValidNickname(const std::string &nick) {
+	if (nick.empty()) return false;
+
+	// Disallow digits as the first char if desired:
+	if (isdigit(nick[0])) return false;
+
+	for (size_t i = 0; i < nick.length(); ++i) {
+		char c = nick[i];
+		if (!isalnum(c) &&
+			c != '-' && c != '[' && c != ']' &&
+			c != '{' && c != '}' &&
+			c != '\\' && c != '|' &&
+			c != '_') {
+			return false;
+		}
+	}
+	return true;
+}
+
 int Server::handleNickCMD(IRCCommand cmd, Client *client) {
-	client->setNick(cmd.args[0]);
-	#if DEBUG
-		std::cout << "[DBG]Client " << client->getFd() << " set nickname to " << client->getNick() << std::endl;
-	#endif
+	if (cmd.args.empty()) {
+		sendCMD(client->getFd(), ERR_NONICKNAMEGIVEN());
+		return 0;
+	}
+
+	std::string newNick = cmd.args[0];
+
+	// Validate nickname characters
+	if (newNick.empty() ||
+		newNick[0] == ':' ||
+		newNick[0] == '#' ||
+		newNick.find(' ') != std::string::npos ||
+		!isValidNickname(newNick)) {
+		sendCMD(client->getFd(), ERR_ERRONEUSNICKNAME(client->getNick()));
+		return 0;
+	}
+
+	// Check if nickname is already in use
+	if (getClientByNick(newNick)) {
+		sendCMD(client->getFd(), ERR_NICKNAMEINUSE(client->getNick()));
+		return 0;
+	}
+
+	std::string oldNick = client->getNick();
+	client->setNick(newNick);
+	std::string nickMsg = ":" + oldNick + "!" + client->getUser() + "@" + client->getHost() +
+		" NICK :" + newNick + "\r\n";
+	send(client->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
+
+
+
+#if DEBUG
+	std::cout << "[DBG] Client FD " << client->getFd()
+			  << " changed nick to '" << newNick << "'" << std::endl;
+#endif
+
 	return 0;
 }
 

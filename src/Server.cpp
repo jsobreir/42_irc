@@ -5,6 +5,9 @@
 
 #define MAX_CLIENTS 1024
 
+std::string _serverName_g;
+std::string _creationDate_g;
+
 Server::Server(int port, std::string password)
 	: _nfds(1),
 	  _server_fd(-1),

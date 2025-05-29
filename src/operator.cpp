@@ -92,10 +92,9 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 					}
 				}
 			}
-			++i; // ✅ increment here after processing the whole token
+			++i;
 		} else {
-			// It’s a parameter without an associated mode string — skip it
-			++i; // ✅ prevent infinite loop
+			++i;
 		}
 	}
 
