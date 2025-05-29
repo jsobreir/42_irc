@@ -52,21 +52,28 @@ inline std::string RPL_NOTOPIC(const std::string& channel) {
     return "331 " + channel + " :No topic is set\r\n";
 }
 
-inline std::string RPL_TOPIC(const std::string& channel, const std::string& topic) {
-    return "332 " + channel + " :" + topic + "\r\n";
-}
+// TODO check if this is correct
+// inline std::string RPL_TOPIC(const std::string& channel, const std::string& topic) {
+//     return "332 " + channel + " :" + topic + "\r\n";
+// }
+#define RPL_TOPIC(nick, channel, topic) (":server 332 " + nick + " " + channel + " :" + topic + "\r\n")
 
 inline std::string RPL_TOPIC2(const std::string& nickname, const std::string& channel, const std::string& topic) {
     return "332 " + nickname + " " + channel + " :" + topic + "\r\n";
 }
 
+#define RPL_NOTOPIC(nick, channel) (":server 331 " + nick + " " + channel + " :No topic is set\r\n")
+
 inline std::string RPL_TOPICWHOTIME(const std::string& nick, const std::string& channelName, const std::string& time) {
     return ":" + _serverName_g + " 333 " + nick + " " + channelName + " " + time + "\r\n";
 }
 
-inline std::string RPL_INVITING(const std::string& nick, const std::string& channel) {
-    return "341 " + nick + " " + channel + "\r\n";
-}
+// TODO check if this is correct
+// inline std::string RPL_INVITING(const std::string& nick, const std::string& channel) {
+//     return "341 " + nick + " " + channel + "\r\n";
+// }
+
+#define RPL_INVITING(serverName, inviterNick, inviteeNick, channelName) (std::string(":") + serverName + " 341 " + inviterNick + " " + inviteeNick + " " + channelName + "\r\n")
 
 inline std::string RPL_WHOREPLY(const std::string& nickname, const std::string& host, const std::string& channelname, const std::string& user, const std::string& realname, const std::string& flag) {
     return ":" + host + " 352 " + nickname + " " + channelname + " " + host + " " + _serverName_g + " " + user + " " + flag + " :2 " + realname + "\r\n";
@@ -89,14 +96,25 @@ inline std::string RPL_MOTD(const std::string& nick) {
     return "372 " + nick + "  Welcome to " + _serverName_g + ", and remember what happens in " + _serverName_g + " stays in " + _serverName_g + " \xF0\x9F\x98\x8E.\r\n";
 }
 
-inline std::string RPL_ENDOFMOTD(const std::string& nick) {
-    return "376 " + nick + " :End of /MOTD command.\r\n";
-}
+#define RPL_MOTDSTART(nick) "375 " + client->getNick() + " - " + _serverName + " Message of the day - \r\n"
+
+
+#define RPL_MOTD(nick) "372 " + client->getNick() + "  Welcome to " + _serverName + ", and remember what happens in " + _serverName + " stays in " + _serverName + " 😎.\r\n"
+
+#define NTFY_CLIENTISINVITED(inviterNick, inviteeNick, channelName) (":" + inviterNick + " INVITE " + inviteeNick + " :" + channelName + "\r\n")
+
+//TODO check if this is correct
+// inline std::string RPL_ENDOFMOTD(const std::string& nick) {
+//     return "376 " + nick + " :End of /MOTD command.\r\n";
+// }
+#define RPL_ENDOFMOTD(nick) "376 " + client->getNick() + "End of /MOTD command.\r\n"
 
 /*---------Error replies-------*/
-inline std::string ERR_NOSUCHNICK(const std::string& nick) {
-    return "401 " + nick + " :No such nick/channel\r\n";
-}
+// TODO check if this is correct 
+// inline std::string ERR_NOSUCHNICK(const std::string& nick) {
+//     return "401 " + nick + " :No such nick/channel\r\n";
+// }
+#define ERR_NOSUCHNICK(clientNick, targetNick) (":" + _serverName + " 401 " + clientNick + " " + targetNick + " :No such nick/channel\r\n")
 
 inline std::string ERR_NOSUCHCHANNEL(const std::string& channel) {
     return "403 " + channel + " :No such channel\r\n";
@@ -130,17 +148,24 @@ inline std::string ERR_NICKCOLLISION(const std::string& nick) {
     return "436 " + nick + " :Nickname collision KILL\r\n";
 }
 
-inline std::string ERR_NOTONCHANNEL(const std::string& nick, const std::string& channelName) {
-    return "442 " + nick + " " + channelName + " :You're not on that channel\r\n";
-}
+#define ERR_USERNOTINCHANNEL(clientNick, targetNick, channelName) ("441 " + clientNick + " " + targetNick + " " + channelName + " :They aren't on that channel\r\n")
+
+
+//TODO check if this is correct
+// inline std::string ERR_NOTONCHANNEL(const std::string& nick, const std::string& channelName) {
+//     return "442 " + nick + " " + channelName + " :You're not on that channel\r\n";
+// }
+#define ERR_NOTONCHANNEL(nick, channel) ("442 " + client->getNick() + " " + channel + " :You're not on that channel\n")
 
 inline std::string ERR_USERONCHANNEL(const std::string& user, const std::string& nick, const std::string& channel) {
     return "443 " + nick + " " + user + " " + channel + " :is already on channel\r\n";
 }
 
-inline std::string ERR_NEEDMOREPARAMS(const std::string& command) {
-    return "461 " + command + " :Not enough parameters\r\n";
-}
+// TODO check if this is correct
+// inline std::string ERR_NEEDMOREPARAMS(const std::string& command) {
+//     return "461 " + command + " :Not enough parameters\r\n";
+// }
+#define ERR_NEEDMOREPARAMS(command) (std::string(":server 461 ") + command + " :Not enough parameters\r\n")
 
 inline std::string ERR_ALREADYREGISTRED() {
     return "462 :You may not reregister\r\n";
@@ -157,8 +182,7 @@ inline std::string ERR_CHANNELISFULL(const std::string& nick, const std::string&
 inline std::string ERR_UNKNOWNMODE(const std::string& mode) {
     return "472 " + mode + " :is unknown mode char to me\r\n";
 }
-
-#define ERR_INVITEONLYCHAN(nick, channelName) ("473 " + nick + channelName + " :Cannot join channel (+i)\n")
+#define ERR_INVITEONLYCHAN(nick, channelName) (":server 473 " + client->getNick() + " " + channelName + " :Cannot join channel (+i)\r\n")
 
 //#define ERR_BANNEDFROMCHAN(nick, channelName) ("474 " + nick + channelName + " :Cannot join channel (+b)\n")
 
@@ -166,6 +190,11 @@ inline std::string ERR_BADCHANMASK(const std::string& channelName) {
     return "476 " + channelName + " :Invalid channel name\r\n";
 }
 
-inline std::string ERR_CHANOPRIVSNEEDED(const std::string& client, const std::string& channel) {
-    return ":" + _serverName_g + " 482 " + client + " " + channel + " :You're not channel operator\r\n";
-}
+// TODO check if this is correct
+// inline std::string ERR_CHANOPRIVSNEEDED(const std::string& client, const std::string& channel) {
+//     return ":" + _serverName_g + " 482 " + client + " " + channel + " :You're not channel operator\r\n";
+// }
+#define ERR_CHANOPRIVSNEEDED(client, channel) (":" + _serverName + " 482 " + client + " " + channel + " :You're not channel operator\r\n")
+
+#define ERR_INVALIDMODEPARAM(clientNick, target, modeChar, parameter, description) (":server 696 " + clientNick + " " + target + " " + modeChar + " " + parameter + " :" + description + "\r\n")
+

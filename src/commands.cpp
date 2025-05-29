@@ -84,7 +84,6 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1) {
-		// ERR_NEEDMOREPARAMS (461): Not enough parameters
 		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
 		return 0;
 	}
@@ -146,6 +145,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		// Check if the channel is invite-only
 		if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
 			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(client->getNick(), channelName));
+
 			continue;
 		}
 
@@ -186,6 +186,7 @@ int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
         // Send QUIT to other clients in the channel *before* removing the client
         if (chan->hasClient(client)) {
 			broadcastMsg(chan, quitMsg, client);
+
             chan->removeClient(client);
         }
     }
@@ -280,3 +281,4 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	}
 	return 0;
 }
+

@@ -49,7 +49,6 @@ class Channel {
 		//void addBanMask(const std::string& mask);
 		//void removeBanMask(const std::string& mask);
 
-
         bool isFull() const;
 
         bool isInvited(Client* client) const;

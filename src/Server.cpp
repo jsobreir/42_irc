@@ -5,6 +5,9 @@
 
 #define MAX_CLIENTS 1024
 
+std::string _serverName_g;
+std::string _creationDate_g;
+
 Server::Server(int port, std::string password)
 	: _nfds(1),
 	  _server_fd(-1),
@@ -268,9 +271,8 @@ Client *Server::getClient(int fd)
 void Server::removeClient(Client *client) {
 	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == client->getFd()) {
-			Client *remove = *it;
 			_clients.erase(it);
-			delete remove;
+			delete *it;
 			break;
 		}
 	}
