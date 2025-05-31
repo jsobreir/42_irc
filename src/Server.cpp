@@ -71,13 +71,21 @@ int Server::getServerFd(void) const {
 	return _server_fd;
 }
 
+// void handleSIGINT(int sig) {
+// 	std::cout << "\nProgram terminated with CTL-C." << std::endl;
+// 	(void)sig;
+// 	close(g_server->getServerFd());
+// 	g_server->closeAllClientFds();
+// 	throw std::exception();
+// }
+
 void handleSIGINT(int sig) {
-	std::cout << "\nProgram terminated with CTL-C." << std::endl;
-	(void)sig;
+    std::cout << "\nProgram terminated with CTRL-C." << std::endl;
+    (void)sig;
 	close(g_server->getServerFd());
 	g_server->closeAllClientFds();
-	throw std::exception();
 
+    exit(0);
 }
 
 void Server::start() {

@@ -57,6 +57,7 @@ class Channel {
         void revokeInvite(const std::string& nickname);
 
 		void broadcastToChannel(const std::string& message);
+
     private:
 		std::vector<std::string> _banMasks;
 		std::vector<Client *> _channelClients;
