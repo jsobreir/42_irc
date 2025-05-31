@@ -146,24 +146,90 @@ void Channel::setUserLimit(size_t limit) {
 }
 
 bool Channel::hasClient(Client* client) const {
-	for (size_t i = 0; i < _channelClients.size(); ++i) {
-		if (_channelClients[i] == client)
-			return true;
-	}
-	return false;
+    #if DEBUG
+        std::cout << "[DBG - hasClient] Checking if there is a client " << std::endl;
+    #endif
+    for (size_t i = 0; i < _channelClients.size(); ++i) {
+        #if DEBUG
+            std::cout << "[DBG - hasClient] Clients in channel: " << _channelClients.size() << std::endl;
+        #endif
+        if (_channelClients[i] == client) {
+            #if DEBUG
+                std::cout << "[DBG - hasClient] Client found in channel." << std::endl;
+            #endif
+            return true;
+        }
+    }
+    #if DEBUG
+        std::cout << "[DBG - hasClient] Client not found in channel." << std::endl;
+    #endif
+    return false;
 }
 
+bool Channel::hasAnyClients() const {
+    #if DEBUG
+        std::cout << "[DBG - hasAnyClients] Checking if there are any clients in channel " << _name << std::endl;
+        std::cout << "[DBG - hasAnyClients] Clients in channel: " << _channelClients.size() << std::endl;
+    #endif
+    return !_channelClients.empty();
+}
+
+// void Channel::broadcastToChannel(const std::string& message) {
+//     for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
+//         (*it)->sendMessage(message); // Assuming Client has a sendMessage method
+//     }
+// }
+void Channel::broadcastToChannel(const std::string& message) {
+    for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
+        if (*it == NULL) {
+            #if DEBUG
+                std::cerr << "[DBG - broadcastToChannel] Null client in channel!" << std::endl;
+            #endif
+            continue;
+        }
+        (*it)->sendMessage(message);
+    }
+}
+
+// int Channel::removeClient(Client* client) {
+// 	for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
+// 		if (*it == client) {
+// 			_channelClients.erase(it);
+// 			std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
+// 			removeOperator(client); // remove operator status if any
+// 			return 0;
+// 		}
+// 	}
+// 	return 1;
+// }
 int Channel::removeClient(Client* client) {
-	for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
-		if (*it == client) {
-			_channelClients.erase(it);
-			std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
-			removeOperator(client); // remove operator status if any
-			return 0;
+	std::vector<Client*>::iterator it = std::find(_channelClients.begin(), _channelClients.end(), client);
+	if (it != _channelClients.end()) {
+		removeOperator(client); // remove operator status if any
+		_channelClients.erase(it);
+		std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
+
+		// ✅ Promote the next available client to operator if no operators remain
+		if (_operators.empty() && !_channelClients.empty()) {
+			Client* newOperator = _channelClients.front(); // pick first client
+			addOperator(newOperator);
+			std::cout << "Client " << newOperator->getFd() << " promoted to operator in channel " << _name << std::endl;
+			
+			std::string modeMsg = ":" + _serverName_g + " MODE " + _name + " +o " + newOperator->getNick() + "\r\n";
+			broadcastToChannel(modeMsg);
 		}
+
+		// Debug: SegFault - Print state of clients and operators
+        std::cout << "Remaining clients in channel: " << _channelClients.size() << std::endl;
+        std::cout << "Operators in channel: " << _operators.size() << std::endl;
+
+		return 0;
 	}
 	return 1;
 }
+
+
+
 
 Client* Channel::getOperator() const {
     if (!_operators.empty())

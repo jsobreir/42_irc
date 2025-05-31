@@ -211,7 +211,8 @@ int Server::handleClientMessage(int fd, const char *msg) {
                 break;
             case 5:
                 handleQuitCMD(cmd, client);
-                break;
+                //break;
+				return 0;
             case 6:
                 handlePrivMsgCMD(cmd, client);
                 break;
@@ -235,7 +236,7 @@ int Server::handleClientMessage(int fd, const char *msg) {
 				break;
             default:
                 #if DEBUG
-                std::cout << "[DBG]Unknown command: " << cmd.command << std::endl;
+                std::cout << "[DBG - handleClientMessage]Unknown command: " << cmd.command << std::endl;
                 #endif   
                 break;
         }
@@ -281,9 +282,15 @@ void Server::removeClient(Client *client) {
 Channel* Server::getChannel(std::string channelName) {
     for (size_t i = 0; i < _channels.size(); i++) {
         if (_channels[i]->getName() == channelName) {
+			#if DEBUG
+                std::cout << "[DBG - getChannel] Found channel: " << channelName << std::endl;
+            #endif
             return _channels[i];
         }
     }
+	#if DEBUG
+		std::cerr << "[DBG - getChannel] Channel not found: " << channelName << std::endl;
+	#endif
     return NULL;
 }
 
@@ -332,16 +339,27 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
     sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
 }
 
-void	Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
+void Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
     const std::vector<Client*> &clients = channel->getClients();
     for (size_t i = 0; i < clients.size(); i++) {
         Client *otherClient = clients[i];
-		std::cout << "Other client is: " << otherClient->getNick() << " and user " <<  otherClient->getUser() << std::endl;
-		std::cout << "client is: " << client->getNick() << std::endl;
+        if (otherClient == NULL) {
+            #if DEBUG
+                std::cerr << "[DBG - broadcastMsg] Null client found in channel!" << std::endl;
+            #endif
+            continue;
+        }
+
+        #if DEBUG
+            std::cout << "Other client is: " << otherClient->getNick() << " and user " << otherClient->getUser() << std::endl;
+            std::cout << "client is: " << client->getNick() << std::endl;
+        #endif
+
         if (otherClient != client) {
-			std::cout << "entered" << std::endl;
+            #if DEBUG
+                std::cout << "entered" << std::endl;
+            #endif
             sendCMD(otherClient->getFd(), msg);
         }
     }
-	return ;
 }
