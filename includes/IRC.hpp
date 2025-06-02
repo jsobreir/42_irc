@@ -18,6 +18,7 @@
 #include <csignal>
 #include <ctime>
 #include <sstream>
+#include <fnmatch.h>
 
 struct IRCCommand {
     std::string command;

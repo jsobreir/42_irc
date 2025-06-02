@@ -130,12 +130,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 
-		// Check if the client is banned from the channel
-		// if (channel && channel->isBanned(client)) {
-		// 	sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
-		// 	continue;
-		// }
-
 		// Check if the channel is full
 		if (channel && channel->isFull()) {
 			sendCMD(client->getFd(), ERR_CHANNELISFULL(client->getNick(), channelName));
@@ -234,13 +228,7 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 		#if DEBUG
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' - starting to check if channel has client" << std::endl;
 		#endif
-		// if (channel->hasClient(client) == false) {
-		// 	#if DEBUG
-		// 		std::cout << "[DBG - PRIVMSG] Client not on channel." << std::endl;
-		// 	#endif
-		// 	sendCMD(client->getFd(), ERR_CANNOTSENDTOCHAN(client->getNick(), channel->getName()));
-		// 	return 1;
-		// }
+
 		if (!channel->hasAnyClients()) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] No clients in channel." << std::endl;
@@ -251,7 +239,6 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 		#if DEBUG
 			std::cout << "[DBG- PRIVMSG] Ive passed the check for user on channel and not returned 1" << std::endl;
 		#endif
-		
 
 		//if for debugging purposes
 		if (client == NULL) {
@@ -289,8 +276,8 @@ int Server::handlePingCMD(IRCCommand cmd, Client *client) {
 	send(client->getFd(), response.c_str(), response.length(), 0);
 
 	#if DEBUG
-	std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
-	std::cout << "[PING] Replied with: " << response;
+		std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
+		std::cout << "[PING] Replied with: " << response;
 	#endif
 
 	return 0;
