@@ -13,7 +13,7 @@ int Server::handleCapCMD(IRCCommand cmd, Client *client) {
 		send(client->getFd(), capResponse.c_str(), capResponse.length(), 0);
 
 		#if DEBUG
-			std::cout << "[DBG]CAP LS response sent to client " << client->getFd() << ": " << capResponse << std::endl;
+			std::cout << "[DBG - handleCapCMD]CAP LS response sent to client " << client->getFd() << ": " << capResponse << std::endl;
 		#endif
 	}
 	return 0;
@@ -21,7 +21,7 @@ int Server::handleCapCMD(IRCCommand cmd, Client *client) {
 
 int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	#if DEBUG
-		std::cout << "[DBG]Setting password for client " << client->getFd() << std::endl;
+		std::cout << "[DBG - handlePassCMD]Setting password for client " << client->getFd() << std::endl;
 	#endif
 	if (cmd.args.size()) {
 		std::string key = cmd.args[0];
@@ -68,38 +68,39 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 		newNick[0] == '#' ||
 		newNick.find(' ') != std::string::npos ||
 		!isValidNickname(newNick)) {
-		sendCMD(client->getFd(), ERR_ERRONEUSNICKNAME(client->getNick()));
+		sendCMD(client->getFd(), ERR_ERRONEUSNICKNAME(newNick));
 		return 0;
 	}
 
 	// Check if nickname is already in use
 	if (getClientByNick(newNick)) {
-		sendCMD(client->getFd(), ERR_NICKNAMEINUSE(client->getNick()));
+		sendCMD(client->getFd(), ERR_NICKNAMEINUSE(newNick));
 		return 0;
 	}
 
 	std::string oldNick = client->getNick();
 	client->setNick(newNick);
-	std::string nickMsg = ":" + oldNick + "!" + client->getUser() + "@" + client->getHost() +
-		" NICK :" + newNick + "\r\n";
+
+	std::string nickMsg = ":" + oldNick + "!" + client->getUser() +
+						" NICK :" + newNick + "\r\n";
+
+	// Optionally: only broadcast if the user is registered
 	send(client->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
-
-
 
 #if DEBUG
 	std::cout << "[DBG] Client FD " << client->getFd()
 			  << " changed nick to '" << newNick << "'" << std::endl;
 #endif
-
 	return 0;
 }
+
 
 int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1)
 		return 0;
 	client->setUser(cmd.args[0]);
 	#if DEBUG
-		std::cout << "[DBG]Client " << client->getFd() << " set username to " << cmd.args[0] << std::endl;
+		std::cout << "[DBG - handleUserCMD]Client " << client->getFd() << " set username to " << cmd.args[0] << std::endl;
 	#endif
 
 	if (!client->getNick().empty() && !client->getUser().empty()) {
@@ -127,7 +128,7 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 		send(client->getFd(), motd.c_str(), motd.length(), 0);
 
 		#if DEBUG
-			std::cout << "[DBG]Sent full welcome sequence to client " << client->getFd() << std::endl;
+			std::cout << "[DBG - handleUserCMD]Sent full welcome sequence to client " << client->getFd() << std::endl;
 		#endif
 	}
 	return 0;
@@ -135,7 +136,6 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1) {
-		// ERR_NEEDMOREPARAMS (461): Not enough parameters
 		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
 		return 0;
 	}
@@ -182,12 +182,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 
-		// Check if the client is banned from the channel
-		// if (channel && channel->isBanned(client)) {
-		// 	sendCMD(client->getFd(), ERR_BANNEDFROMCHAN(client->getNick(), channelName));
-		// 	continue;
-		// }
-
 		// Check if the channel is full
 		if (channel && channel->isFull()) {
 			sendCMD(client->getFd(), ERR_CHANNELISFULL(client->getNick(), channelName));
@@ -197,6 +191,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		// Check if the channel is invite-only
 		if (channel && channel->isInviteOnly() && !channel->isInvited(client)) {
 			sendCMD(client->getFd(), ERR_INVITEONLYCHAN(client->getNick(), channelName));
+
 			continue;
 		}
 
@@ -209,7 +204,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		// Join the channel
 		joinChannel(client, channelName);
 		#if DEBUG
-			std::cout << "[DBG]Client " << client->getFd() << " joined channel " << channelName << std::endl;
+			std::cout << "[DBG - handleJoinCMD]Client " << client->getFd() << " joined channel " << channelName << std::endl;
 		#endif
 	}
 	return 0;
@@ -217,7 +212,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
     #if DEBUG
-        std::cout << "[DBG]Client " << client->getFd() << " disconnected" << std::endl;
+        std::cout << "[DBG - handleQuitCMD]Client " << client->getFd() << " disconnected" << std::endl;
     #endif
 
     std::string reason;
@@ -237,6 +232,7 @@ int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
         // Send QUIT to other clients in the channel *before* removing the client
         if (chan->hasClient(client)) {
 			broadcastMsg(chan, quitMsg, client);
+
             chan->removeClient(client);
         }
     }
@@ -257,33 +253,64 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 	}
 
 	#if DEBUG
-		std::cout << "[DBG] PRIVMSG - target: " << target << std::endl;
-		std::cout << "[DBG] PRIVMSG - message: <" << message << ">" << std::endl;
+		std::cout << "[DBG - PRIVMSG] target: " << target << std::endl;
+		std::cout << "[DBG - PRIVMSG] message: <" << message << ">" << std::endl;
 	#endif		
 
 	if (!message.empty() && message[0] == ':') {
 		#if DEBUG
-			std::cout << "[DBG] PRIVMSG - Removing leading colon from message" << std::endl;
+			std::cout << "[DBG - PRIVMSG] Removing leading colon from message" << std::endl;
 		#endif
 		message = message.substr(1); // Remove leading colon
 	}
 
 	if (target[0] == '#') {
+		#if DEBUG
+			std::cout << "[DBG - PRIVMSG] Inside 'target if'" << std::endl;
+		#endif
 		Channel *channel = getChannel(target);
 		if (!channel) {
+			#if DEBUG
+				std::cout << "[DBG - PRIVMSG] Inside 'target if' / '!channel'" << std::endl;
+			#endif
 			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(target));
 			return 1;
 		}
-		
-		if (channel->hasClient(client) == false) {
+
+		#if DEBUG
+				std::cout << "[DBG - PRIVMSG] Inside 'target if' - starting to check if channel has client" << std::endl;
+		#endif
+
+		if (!channel->hasAnyClients()) {
 			#if DEBUG
-				std::cout << "[DBG] PRIVMSG - Client not on channel." << std::endl;
+				std::cout << "[DBG - PRIVMSG] No clients in channel." << std::endl;
 			#endif
 			sendCMD(client->getFd(), ERR_CANNOTSENDTOCHAN(client->getNick(), channel->getName()));
 			return 1;
 		}
+		#if DEBUG
+			std::cout << "[DBG- PRIVMSG] Ive passed the check for user on channel and not returned 1" << std::endl;
+		#endif
+
+		//if for debugging purposes
+		if (client == NULL) {
+			#if DEBUG
+				std::cerr << "[DBG - PRIVMSG] Client is nullptr!" << std::endl;
+			#endif
+			return 1;
+		}
+		//if for debugging purposes
+		if (client->getNick().empty()) {
+			#if DEBUG
+				std::cerr << "[DBG - PRIVMSG] Client nickname is empty!" << std::endl;
+			#endif
+			return 1;
+		}
 		// Construct the full message
 		std::string fullMsg = ":" + client->getNick() + " PRIVMSG " + target + " :" + message + "\r\n";
+		#if DEBUG
+			std::cout << "[DBG- PRIVMSG] Message has been construted, next step is the broadcast." << std::endl;
+		#endif
 		broadcastMsg(channel, fullMsg, client);
 	}
 	return 0;
@@ -301,8 +328,8 @@ int Server::handlePingCMD(IRCCommand cmd, Client *client) {
 	send(client->getFd(), response.c_str(), response.length(), 0);
 
 	#if DEBUG
-	std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
-	std::cout << "[PING] Replied with: " << response;
+		std::cout << "[PING] Received from " << client->getNick() << " token: " << token << std::endl;
+		std::cout << "[PING] Replied with: " << response;
 	#endif
 
 	return 0;
@@ -331,3 +358,4 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	}
 	return 0;
 }
+

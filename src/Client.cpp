@@ -65,3 +65,7 @@ size_t Client::getChannelCount() const
 {
 	return _joinedChannels;
 }
+
+void Client::sendMessage(const std::string& message) {
+    send(_fd, message.c_str(), message.size(), 0);
+}

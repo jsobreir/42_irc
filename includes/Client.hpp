@@ -23,6 +23,7 @@ class Client {
 		size_t getChannelCount() const;
 		void incrementJoinedChannels();
 		void decrementJoinedChannels();
+		void sendMessage(const std::string& message);
 
 
 	private:

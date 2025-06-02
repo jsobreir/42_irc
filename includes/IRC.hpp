@@ -18,6 +18,7 @@
 #include <csignal>
 #include <ctime>
 #include <sstream>
+#include <fnmatch.h>
 
 struct IRCCommand {
     std::string command;
@@ -35,7 +36,7 @@ extern Server *g_server;
 
 #define MAX_CLIENTS 1024
 #define MAX_CHANNELS 1024
-#define DEBUG 1
+#define DEBUG 0
 
 
 

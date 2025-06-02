@@ -57,27 +57,20 @@ Server &Server::operator=(Server const &other) {
 }
 
 Server::~Server() {
-    for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
-        delete *it;
-    }
-	_channels.clear();
-	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+	for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
 		delete *it;
 	}
-	_clients.clear();
+	std::vector<Channel*>().swap(_channels);
+
+	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+		delete *it;
+	}
+	std::vector<Client*>().swap(_clients);
 }
+
 
 int Server::getServerFd(void) const {
 	return _server_fd;
-}
-
-void handleSIGINT(int sig) {
-	std::cout << "\nProgram terminated with CTL-C." << std::endl;
-	(void)sig;
-	close(g_server->getServerFd());
-	g_server->closeAllClientFds();
-	throw std::exception();
-
 }
 
 void Server::start() {
@@ -130,7 +123,6 @@ void Server::start() {
 			perror("poll");
 			throw std::exception();
 		}
-		signal(SIGINT, handleSIGINT);
 		if (fds[0].revents & POLLIN)
 			acceptNewClient(fds);
 		// Handle client data
@@ -173,48 +165,49 @@ void Server::handleClientData(struct pollfd fds[]) {
 }
 
 int Server::handleClientMessage(int fd, const char *msg) {
-    std::stringstream ss(msg);
+	std::stringstream ss(msg);
 	std::string line;
-    IRCCommand cmd;
+	IRCCommand cmd;
 
-    const int n_commands = 14;
-    std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE", "PING", "PART"};
-    Client *client = getClient(fd);
+	const int n_commands = 14;
+	std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE", "PING", "PART"};
+	Client *client = getClient(fd);
 
-    while (std::getline(ss, line)) {
-        cmd = parseIRCLine(line);
+	while (std::getline(ss, line)) {
+		cmd = parseIRCLine(line);
 
 		std::cout << cmd.command << std::endl;
 		for (std::vector<std::string>::iterator it = cmd.args.begin(); it != cmd.args.end(); it++)
 			std::cout << *it << std::endl;
-        int i;
-        for (i = 0; i < n_commands; i++) {
-            if (cmd.command == commands[i])
-                break;
-        }
-        switch (i)
-        {
-            case 0:
-                handleCapCMD(cmd, client);
-                break;
-            case 1:
-                handlePassCMD(cmd, client);
-                break;
-            case 2:
-                handleNickCMD(cmd, client);
-                break;
-            case 3:
-                handleUserCMD(cmd, client);
-                break;
-            case 4:
-                handleJoinCMD(cmd, client);
-                break;
-            case 5:
-                handleQuitCMD(cmd, client);
-                break;
-            case 6:
-                handlePrivMsgCMD(cmd, client);
-                break;
+		int i;
+		for (i = 0; i < n_commands; i++) {
+			if (cmd.command == commands[i])
+				break;
+		}
+		switch (i)
+		{
+			case 0:
+				handleCapCMD(cmd, client);
+				break;
+			case 1:
+				handlePassCMD(cmd, client);
+				break;
+			case 2:
+				handleNickCMD(cmd, client);
+				break;
+			case 3:
+				handleUserCMD(cmd, client);
+				break;
+			case 4:
+				handleJoinCMD(cmd, client);
+				break;
+			case 5:
+				handleQuitCMD(cmd, client);
+				//break;
+				return 0;
+			case 6:
+				handlePrivMsgCMD(cmd, client);
+				break;
 			case 7:
 				handleModeOperatorCMD(cmd, client);
 				break;
@@ -233,13 +226,13 @@ int Server::handleClientMessage(int fd, const char *msg) {
 			case 12:
 				handlePartCMD(cmd, client);
 				break;
-            default:
-                #if DEBUG
-                std::cout << "[DBG]Unknown command: " << cmd.command << std::endl;
-                #endif   
-                break;
-        }
-    }
+			default:
+				#if DEBUG
+				std::cout << "[DBG - handleClientMessage]Unknown command: " << cmd.command << std::endl;
+				#endif   
+				break;
+		}
+	}
 	return 0;
 }
 
@@ -271,21 +264,26 @@ Client *Server::getClient(int fd)
 void Server::removeClient(Client *client) {
 	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == client->getFd()) {
-			Client *remove = *it;
+			delete *it;
 			_clients.erase(it);
-			delete remove;
 			break;
 		}
 	}
 }
 
 Channel* Server::getChannel(std::string channelName) {
-    for (size_t i = 0; i < _channels.size(); i++) {
-        if (_channels[i]->getName() == channelName) {
-            return _channels[i];
-        }
-    }
-    return NULL;
+	for (size_t i = 0; i < _channels.size(); i++) {
+		if (_channels[i]->getName() == channelName) {
+			#if DEBUG
+				std::cout << "[DBG - getChannel] Found channel: " << channelName << std::endl;
+			#endif
+			return _channels[i];
+		}
+	}
+	#if DEBUG
+		std::cerr << "[DBG - getChannel] Channel not found: " << channelName << std::endl;
+	#endif
+	return NULL;
 }
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
@@ -307,42 +305,53 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 	// Increment the client's joined channels count
 	client->incrementJoinedChannels();
 
-    // Send the JOIN message itself — this tells the client it has joined the channel
-    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
-    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-    send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+	// Send the JOIN message itself — this tells the client it has joined the channel
+	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
+	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
 
 	broadcastMsg(channel, joinMsg, client);
 
-    std::string topic = channel->getTopic();
-    sendCMD(client->getFd(), RPL_TOPIC2(client->getNick(), channelName, topic));
+	std::string topic = channel->getTopic();
+	sendCMD(client->getFd(), RPL_TOPIC2(client->getNick(), channelName, topic));
 
 	const std::vector<Client*> &clients = channel->getClients();
-    
+	
 	std::string userList = "";
-    Client* op = channel->getOperator();
-    for (size_t i = 0; i < clients.size(); i++) {
-        if (i != 0)
-            userList += " ";
-        if (clients[i] == op)
-            userList += "@";  // prefix operator with @
-        userList += clients[i]->getNick();
-    }
-    sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
+	Client* op = channel->getOperator();
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (i != 0)
+			userList += " ";
+		if (clients[i] == op)
+			userList += "@";  // prefix operator with @
+		userList += clients[i]->getNick();
+	}
+	sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
 
-    sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
+	sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
 }
 
-void	Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
-    const std::vector<Client*> &clients = channel->getClients();
-    for (size_t i = 0; i < clients.size(); i++) {
-        Client *otherClient = clients[i];
-		std::cout << "Other client is: " << otherClient->getNick() << " and user " <<  otherClient->getUser() << std::endl;
-		std::cout << "client is: " << client->getNick() << std::endl;
-        if (otherClient != client) {
-			std::cout << "entered" << std::endl;
-            sendCMD(otherClient->getFd(), msg);
-        }
-    }
-	return ;
+void Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
+	const std::vector<Client*> &clients = channel->getClients();
+	for (size_t i = 0; i < clients.size(); i++) {
+		Client *otherClient = clients[i];
+		if (otherClient == NULL) {
+			#if DEBUG
+				std::cerr << "[DBG - broadcastMsg] Null client found in channel!" << std::endl;
+			#endif
+			continue;
+		}
+
+		#if DEBUG
+			std::cout << "Other client is: " << otherClient->getNick() << " and user " << otherClient->getUser() << std::endl;
+			std::cout << "client is: " << client->getNick() << std::endl;
+		#endif
+
+		if (otherClient != client) {
+			#if DEBUG
+				std::cout << "entered" << std::endl;
+			#endif
+			sendCMD(otherClient->getFd(), msg);
+		}
+	}
 }

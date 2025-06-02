@@ -39,6 +39,7 @@ class Channel {
 		void setUserLimit(size_t limit);
 	
 		bool hasClient(Client* client) const;
+		bool hasAnyClients() const;
 		int removeClient(Client* client);
 
         //bool isBanned(Client* client) const;
@@ -49,12 +50,14 @@ class Channel {
 		//void addBanMask(const std::string& mask);
 		//void removeBanMask(const std::string& mask);
 
-
         bool isFull() const;
 
         bool isInvited(Client* client) const;
         void inviteClient(const std::string& nickname);
         void revokeInvite(const std::string& nickname);
+
+		void broadcastToChannel(const std::string& message);
+
     private:
 		std::vector<std::string> _banMasks;
 		std::vector<Client *> _channelClients;
