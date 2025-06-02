@@ -280,8 +280,8 @@ Client *Server::getClient(int fd)
 void Server::removeClient(Client *client) {
 	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == client->getFd()) {
-			_clients.erase(it);
 			delete *it;
+			_clients.erase(it);
 			break;
 		}
 	}
