@@ -194,18 +194,20 @@ int Channel::removeClient(Client* client) {
 		std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
 
 		// ✅ Promote the next available client to operator if no operators remain
-		if (_operators.empty() && !_channelClients.empty()) {
-			Client* newOperator = _channelClients.front(); // pick first client
-			addOperator(newOperator);
-			std::cout << "Client " << newOperator->getFd() << " promoted to operator in channel " << _name << std::endl;
+		// if (_operators.empty() && !_channelClients.empty()) {
+		// 	Client* newOperator = _channelClients.front(); // pick first client
+		// 	addOperator(newOperator);
+		// 	std::cout << "Client " << newOperator->getFd() << " promoted to operator in channel " << _name << std::endl;
 			
-			std::string modeMsg = ":" + _serverName_g + " MODE " + _name + " +o " + newOperator->getNick() + "\r\n";
-			broadcastToChannel(modeMsg);
-		}
+		// 	std::string modeMsg = ":" + _serverName_g + " MODE " + _name + " +o " + newOperator->getNick() + "\r\n";
+		// 	broadcastToChannel(modeMsg);
+		// }
 
 		// Debug: SegFault - Print state of clients and operators
-        std::cout << "Remaining clients in channel: " << _channelClients.size() << std::endl;
-        std::cout << "Operators in channel: " << _operators.size() << std::endl;
+		#if DEBUG
+        	std::cout << "Remaining clients in channel: " << _channelClients.size() << std::endl;
+        	std::cout << "Operators in channel: " << _operators.size() << std::endl;
+		#endif
 
 		return 0;
 	}
