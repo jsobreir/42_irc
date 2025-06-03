@@ -1,13 +1,5 @@
 #include "IRC.hpp"
 
-Client* Server::getClientByNick(const std::string& nickname) {
-	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		if ((*it)->getNick() == nickname)
-			return *it;
-	}
-	return NULL;
-}
-
 int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
 		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
@@ -34,7 +26,10 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 
 	// Check if the client is an operator
 	if (!channel->isOperator(client)) {
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channel->getName()));
+		#if DEBUG
+		std::cout << "[DBG] Is operator" << std::endl;
+        #endif
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
 		return 0;
 	}
 
@@ -136,29 +131,27 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string channelName = cmd.args[0];
 	std::string targetNick = cmd.args[1];
 
-	// Check required params
-	Channel* channel = getChannel(channelName);
-	if (!channel) {
-		std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
-	}
+    Channel* channel = getChannel(channelName);
+    if (!channel) {
+        std::string err = ":server 403 " + client->getNick() + " " + channelName + " :No such channel\r\n";
+        send(client->getFd(), err.c_str(), err.length(), 0);
+        return 0;
+    }
 
 	if (!channel->isOperator(client)) {
-		std::string err = ERR_CHANOPRIVSNEEDED(client->getNick(), channelName);
+		std::string err = ERR_CHANOPRIVSNEEDED(channelName);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
 
-	// Locate target client from the channel
-	Client* targetClient = NULL;
-	const std::vector<Client*>& clients = channel->getClients();
-	for (size_t i = 0; i < clients.size(); ++i) {
-		if (clients[i]->getNick() == targetNick) {
-			targetClient = clients[i];
-			break;
-		}
-	}
+    Client* targetClient = NULL;
+    const std::vector<Client*>& clients = channel->getClients();
+    for (size_t i = 0; i < clients.size(); ++i) {
+        if (clients[i]->getNick() == targetNick) {
+            targetClient = clients[i];
+            break;
+        }
+    }
 
 	if (!targetClient || !channel->hasClient(targetClient)) {
 		std::string err = ERR_USERNOTINCHANNEL(client->getNick(), targetNick, channelName);
@@ -166,13 +159,12 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 		return 0;
 	}
 
-	// Parse optional reason
-	std::string reason;
-	if (cmd.args.size() > 2) {
-		reason = cmd.args[2];
-		if (!reason.empty() && reason[0] == ':')
-			reason = reason.substr(1);
-	}
+    std::string reason;
+    if (cmd.args.size() > 2) {
+        reason = cmd.args[2];
+        if (!reason.empty() && reason[0] == ':')
+            reason = reason.substr(1);
+    }
 
 	// Format KICK message
 	std::string kickMsg = ":" + client->getNick() + " KICK " + channelName + " " + targetNick;
@@ -196,7 +188,7 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
 		// Not enough parameters: need at least the channel name
-		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS("TOPIC"));
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
 		return 0;
 	}
 
@@ -212,15 +204,15 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() == 1) {
 		std::string topic = channel->getTopic();
 		if (topic.empty()) {
-			sendCMD(client->getFd(), RPL_NOTOPIC(client->getNick(), channelName));
+			sendCMD(client->getFd(), RPL_NOTOPIC(channelName));
 		} else {
-			sendCMD(client->getFd(), RPL_TOPIC(client->getNick(), channelName, topic));
+			sendCMD(client->getFd(), RPL_TOPIC(channelName, topic));
 		}
 		return 0;
 	}
 
 	if (channel->isTopicOnlyOps() && !channel->isOperator(client)) {
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channelName));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channelName));
 		return 0;
 	}
 
@@ -252,7 +244,7 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	// Ensure the command has the required arguments: target nickname and channel name
 	if (cmd.args.size() < 2) {
-		std::string err = ERR_NEEDMOREPARAMS("INVITE");
+		std::string err = ERR_NEEDMOREPARAMS(cmd.command);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
@@ -270,7 +262,7 @@ int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 
 	// Check if the client is an operator in the channel
 	if (!channel->isOperator(client)) {
-		std::string err = ERR_CHANOPRIVSNEEDED(client->getNick(), channelName);
+		std::string err = ERR_CHANOPRIVSNEEDED(channelName);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
@@ -285,14 +277,14 @@ int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	}
 
 	if (!targetClient) {
-		std::string err = ERR_NOSUCHNICK(client->getNick(), targetNick);
+		std::string err = ERR_NOSUCHNICK(targetNick);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
 
 	// Check if the target client is already in the channel
 	if (channel->hasClient(targetClient)) {
-		std::string err = ERR_USERONCHANNEL(client->getUser(), targetNick ,channelName);
+		std::string err = ERR_USERONCHANNEL(targetNick ,channelName);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
@@ -305,7 +297,7 @@ int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	send(targetClient->getFd(), inviteMsg.c_str(), inviteMsg.length(), 0);
 
 	// Notify the inviter that the invitation was successful
-	std::string testMessage = RPL_INVITING("42_ft_IRC", client->getNick(), targetNick, channel->getName());
+	std::string testMessage = RPL_INVITING(targetNick, channel->getName());
 	send(client->getFd(), testMessage.c_str(), testMessage.length(), 0);
 
 	return 0;

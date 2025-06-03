@@ -20,7 +20,6 @@ Server::Server(int port, std::string password)
 	char buffer[20];
 	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
 	_creationDate = buffer;
-	_serverName_g = _serverName;
 }
 
 const std::string &Server::getPassword() const {
@@ -71,6 +70,23 @@ Server::~Server() {
 
 int Server::getServerFd(void) const {
 	return _server_fd;
+}
+
+std::string Server::getServerName() const {
+	return _serverName;
+}
+
+std::string Server::getCreationDate() const {
+	return _creationDate;
+}
+
+void handleSIGINT(int sig) {
+	std::cout << "\nProgram terminated with CTL-C." << std::endl;
+	(void)sig;
+	close(g_server->getServerFd());
+	g_server->closeAllClientFds();
+	throw std::exception();
+
 }
 
 void Server::start() {
@@ -261,6 +277,14 @@ Client *Server::getClient(int fd)
 	return NULL;
 }
 
+Client 	*Server::getClientByNick(const std::string &nickname) {
+	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
+		if ((*it)->getNick() == nickname)
+			return *it;
+	}
+	return NULL;
+}
+
 void Server::removeClient(Client *client) {
 	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
 		if ((*it)->getFd() == client->getFd()) {
@@ -288,27 +312,22 @@ Channel* Server::getChannel(std::string channelName) {
 
 void Server::joinChannel(Client *client, const std::string &channelName) {
 
-	// Check if the channel already exists
 	Channel *channel = getChannel(channelName);
 	if (!channel) {
-		// Create a new channel
 		Channel *newChannel = new Channel();
 		newChannel->setName(channelName);
 		newChannel->addClient(client);
-		_channels.push_back(newChannel); // Store the pointer in the vector
+		_channels.push_back(newChannel);
 		channel = newChannel;
 	} else {
-		// Add the client to the existing channel
 		channel->addClient(client);
 	}
 
-	// Increment the client's joined channels count
 	client->incrementJoinedChannels();
 
-	// Send the JOIN message itself — this tells the client it has joined the channel
-	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost"; // Adjust host if you have it
-	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-	send(client->getFd(), joinMsg.c_str(), joinMsg.length(), 0);
+    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost";
+    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+    sendCMD(client->getFd(), joinMsg);
 
 	broadcastMsg(channel, joinMsg, client);
 
@@ -318,15 +337,15 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 	const std::vector<Client*> &clients = channel->getClients();
 	
 	std::string userList = "";
-	Client* op = channel->getOperator();
-	for (size_t i = 0; i < clients.size(); i++) {
-		if (i != 0)
-			userList += " ";
-		if (clients[i] == op)
-			userList += "@";  // prefix operator with @
-		userList += clients[i]->getNick();
-	}
-	sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
+    Client* op = channel->getOperator();
+    for (size_t i = 0; i < clients.size(); i++) {
+        if (i != 0)
+            userList += " ";
+        if (clients[i] == op)
+            userList += "@";
+        userList += clients[i]->getNick();
+    }
+    sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
 
 	sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
 }
