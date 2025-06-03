@@ -12,7 +12,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string channelName = cmd.args[0];
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channelName));
 		return 0;
 	}
 
@@ -198,7 +198,7 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string channelName = cmd.args[0];
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channelName));
 		return 0;
 	}
 
@@ -243,64 +243,37 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	return 0;
 }
 
-int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
-	// Ensure the command has the required arguments: target nickname and channel name
+int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 2) {
-		std::string err = ERR_NEEDMOREPARAMS(cmd.command);
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		return 1;
 	}
-
-	std::string targetNick = cmd.args[0];
-	std::string channelName = cmd.args[1];
-
-	// Check if the channel exists
-	Channel* channel = getChannel(channelName);
-	if (!channel) {
-		std::string err = ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName);
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
+	Channel *channel = getChannel(cmd.args[1]);
+	if (channel == NULL) {
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(cmd.args[1], channel->getName()));
+		return 1;
 	}
-
-	// Check if the client is an operator in the channel
-	if (!channel->isOperator(client)) {
-		std::string err = ERR_CHANOPRIVSNEEDED(channelName);
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
+	if (channel->hasClient(client) == false) {
+		sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), channel->getName()));
+		return 1;
 	}
-
-	// Find the target client by nickname
-	Client* targetClient = NULL;
-	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		if ((*it)->getNick() == targetNick) {
-			targetClient = *it;
-			break;
-		}
+	if (channel->isInviteOnly() && !channel->isOperator(client)) {
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
+		return 1;	
 	}
-
+	Client *targetClient = getClientByNick(cmd.args[0]);
 	if (!targetClient) {
-		std::string err = ERR_NOSUCHNICK(targetNick);
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
+		sendCMD(client->getFd(), ERR_NOSUCHNICK(cmd.args[0]));
+		return 1;
 	}
-
-	// Check if the target client is already in the channel
 	if (channel->hasClient(targetClient)) {
-		std::string err = ERR_USERONCHANNEL(targetNick ,channelName);
-		send(client->getFd(), err.c_str(), err.length(), 0);
-		return 0;
+		sendCMD(client->getFd(), ERR_USERONCHANNEL(targetClient->getNick(), channel->getName()));
+		return 1;	
 	}
+	sendCMD(client->getFd(), RPL_INVITING(targetClient->getNick(), channel->getName()));
+	std::string msg = ":" + client->getNick() + "!" + client->getUser() + "@localhost INVITE " + targetClient->getNick() + " :" + channel->getName() + "\r\n";
 
-	// Add the target client to the channel's invite list
-	channel->inviteClient(targetNick);
-
-	// Notify the target client about the invitation
-	std::string inviteMsg = NTFY_CLIENTISINVITED(client->getNick(), targetNick, channel->getName());
-	send(targetClient->getFd(), inviteMsg.c_str(), inviteMsg.length(), 0);
-
-	// Notify the inviter that the invitation was successful
-	std::string testMessage = RPL_INVITING(targetNick, channel->getName());
-	send(client->getFd(), testMessage.c_str(), testMessage.length(), 0);
-
+	sendCMD(targetClient->getFd(), msg);
+	joinChannel(targetClient, channel->getName());
 	return 0;
 }

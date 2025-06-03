@@ -144,7 +144,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 		size_t start = channelName.find_first_not_of(" ");
 		size_t end = channelName.find_last_not_of(" ");
 		if (start == std::string::npos || end == std::string::npos) {
-			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channelName));
 			continue;
 		}
 		channelName = channelName.substr(start, end - start + 1);
@@ -263,7 +263,7 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' / '!channel'" << std::endl;
 			#endif
-			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channel->getName()));
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channel->getName()));
 			return 1;
 		}
 
@@ -335,7 +335,7 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	while (std::getline(ss, channelName, ',')) {
 		Channel *channel = getChannel(channelName);
 		if (channel == NULL) {
-			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channelName));
 			return 1;
 		}
 		if (channel->removeClient(client) == 1) {

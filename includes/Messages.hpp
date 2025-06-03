@@ -31,7 +31,7 @@
 
 #define RPL_TOPICWHOTIME(channel, nick, time) (":" + SERVER_NAME + " 333 " + nick + " " + channel + " " + time + "\r\n")
 
-#define RPL_INVITING(nick, channel) (": 341" + nick + " " + channel + "\r\n")
+#define RPL_INVITING(nick, channel) (": 341 " + nick + " " + channel + "\r\n")
 
 #define RPL_WHOREPLY(nickname, host,  channelname, user, realname, flag) (":" + host + " 352 " + nickname + " " + channelname + " " + host + " " + SERVER_NAME + " " + user + " " + flag + " :2 " + realname + "\r\n")
 
@@ -52,7 +52,7 @@
 /*---------Error replies-------*/
 #define ERR_NOSUCHNICK(nick) ("401 " + nick + " :No such nick/channel\n")
 
-#define ERR_NOSUCHCHANNEL(server, nick, channel) (": 403 " + nick + " " + channel + " :No such channel\r\n")
+#define ERR_NOSUCHCHANNEL(nick, channel) (": 403 " + nick + " " + channel + " :No such channel\r\n")
 
 #define ERR_CANNOTSENDTOCHAN(client, channel) (": 404 " + client + " " + channel + " :Cannot send to channel\r\n")
 
@@ -92,5 +92,3 @@
 
 #define ERR_CHANOPRIVSNEEDED(channel) (std::string("482 ") + channel + " :You're not channel operator\n")
 /*-----------------------------*/
-
-#define NTFY_CLIENTISINVITED(inviterNick, inviteeNick, channelName) (":" + inviterNick + " INVITE " + inviteeNick + " :" + channelName + "\r\n")
