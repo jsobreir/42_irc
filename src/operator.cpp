@@ -54,23 +54,27 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 				} else {
 					switch (c) {
 						case 'i':
+							modeChangeSummary += "i";
 							channel->setInviteOnly(adding);
 							break;
 
-						case 'o': {
+						case 'o':
+							modeChangeSummary += "o";
 							if (i + 1 >= cmd.args.size()) break;
-							std::string targetNick = cmd.args[++i];
-							Client* targetClient = getClientByNick(targetNick);
-							if (!targetClient) break;
-							if (adding)
-								channel->addOperator(targetClient);
-							else
-								channel->removeOperator(targetClient);
-							paramSummary += " " + targetNick;
-							break;
-						}
+							{
+								std::string targetNick = cmd.args[++i];
+								Client* targetClient = getClientByNick(targetNick);
+								if (!targetClient) break;
+								if (adding)
+									channel->addOperator(targetClient);
+								else
+									channel->removeOperator(targetClient);
+								paramSummary += " " + targetNick;
+								break;
+							}
 
-						case 'k': {
+						case 'k':
+							modeChangeSummary += "k";
 							if (adding) {
 								if (i + 1 >= cmd.args.size()) break;
 								std::string key = cmd.args[++i];
@@ -80,9 +84,9 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 								channel->setKey("");
 							}
 							break;
-						}
 
-						case 'l': {
+						case 'l':
+							modeChangeSummary += "l";
 							if (adding) {
 								if (i + 1 >= cmd.args.size()) break;
 								std::string limitStr = cmd.args[++i];
@@ -94,12 +98,11 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 								channel->setUserLimit(0);
 							}
 							break;
-						}
 
-						case 't': {
+						case 't':
+							modeChangeSummary += "t";
 							channel->setTopicOnlyOps(adding);
 							break;
-						}
 
 						default:
 							sendCMD(client->getFd(), ERR_UNKNOWNMODE(std::string(1, c)));

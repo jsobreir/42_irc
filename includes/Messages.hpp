@@ -81,7 +81,7 @@
 #define ERR_PASSWDMISMATCH "464 :Password incorrect\n"
 
 #define ERR_UNKNOWNMODE(mode) ("472 " + mode + " :is unknown mode char to me\r\n")
-std::string(1, c)
+
 #define ERR_CHANNELISFULL(client, channel) ("471 " + client + " " + channel + " :Cannot join channel (+l)\r\n")
 
 #define ERR_INVITEONLYCHAN(client, channel) ("473 " + client + " " + channel + " :Cannot join channel (+i)\r\n")
