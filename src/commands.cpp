@@ -219,14 +219,13 @@ int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
     for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
         Channel* chan = *it;
 
-        // Send QUIT to other clients in the channel *before* removing the client
         if (chan->hasClient(client)) {
 			broadcastMsg(chan, quitMsg, client);
 
             chan->removeClient(client);
         }
     }
-
+	sendCMD(client->getFd(), quitMsg);
     close(client->getFd());
     removeClient(client);
     return 0;
