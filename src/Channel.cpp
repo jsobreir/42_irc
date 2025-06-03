@@ -235,3 +235,22 @@ void Channel::inviteClient(const std::string& nickname) {
 void Channel::revokeInvite(const std::string& nickname) {
     _invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), nickname), _invitedClients.end());
 }
+
+std::string Channel::getActiveModes() const {
+    std::string modes = "+";
+
+    if (_inviteOnly) {
+        modes += "i"; // Invite-only mode
+    }
+    if (_topicOnlyOps) {
+        modes += "t"; // Topic-only ops mode
+    }
+    if (!_key.empty()) {
+        modes += "k"; // Key mode
+    }
+    if (_userLimit > 0) {
+        modes += "l"; // User limit mode
+    }
+
+    return modes;
+}

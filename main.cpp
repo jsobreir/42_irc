@@ -13,7 +13,7 @@ Server *g_server = NULL;
 
 void cleanup_and_exit(int signum) {
 	if (g_server) {
-		delete g_server;  // Make sure your Server destructor frees all resources
+		delete g_server;
 		g_server = NULL;
 	}
 	std::cout << "\nServer shutting down due to CTRL+C " << signum << std::endl;

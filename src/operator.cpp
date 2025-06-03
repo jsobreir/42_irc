@@ -12,7 +12,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
 		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
 		#if DEBUG
-		std::cout << "Entered No channel name if" << std::endl;
+			std::cout << "Entered No channel name if" << std::endl;
 		#endif
 		return 0;
 	}
@@ -24,6 +24,15 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		return 0;
 	}
 
+	// Exception: If MODE has no params, display active channel modes
+	if (cmd.args.size() == 1) {
+		std::string activeModes = channel->getActiveModes();
+		std::string response = ":42_ft_IRC MODE " + channelName + " :" + activeModes + "\r\n";
+		sendCMD(client->getFd(), response);
+		return 0;
+	}
+
+	// Check if the client is an operator
 	if (!channel->isOperator(client)) {
 		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channel->getName()));
 		return 0;
