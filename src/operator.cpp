@@ -12,7 +12,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string channelName = cmd.args[0];
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(channelName));
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
 		return 0;
 	}
 
@@ -198,8 +198,7 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string channelName = cmd.args[0];
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-		// No such channel
-		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(channelName));
+		sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName));
 		return 0;
 	}
 
@@ -258,7 +257,7 @@ int Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	// Check if the channel exists
 	Channel* channel = getChannel(channelName);
 	if (!channel) {
-		std::string err = ERR_NOSUCHCHANNEL(channelName);
+		std::string err = ERR_NOSUCHCHANNEL(getServerName(), client->getNick(), channelName);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}

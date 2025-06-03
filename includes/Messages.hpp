@@ -52,11 +52,11 @@
 /*---------Error replies-------*/
 #define ERR_NOSUCHNICK(nick) ("401 " + nick + " :No such nick/channel\n")
 
-#define ERR_NOSUCHCHANNEL(channel) ("403 " + channel + " :No such channel\n")
+#define ERR_NOSUCHCHANNEL(server, nick, channel) (": 403 " + nick + " " + channel + " :No such channel\r\n")
 
-#define ERR_CANNOTSENDTOCHAN(client, channel) ("404 " + client + " " + channel + " :Cannot send to channel\r\n")
+#define ERR_CANNOTSENDTOCHAN(client, channel) (": 404 " + client + " " + channel + " :Cannot send to channel\r\n")
 
-#define ERR_TOOMANYCHANNELS(client, channel) ("405 " + client + " " + channel + " :You have joined too many channels\r\n")
+#define ERR_TOOMANYCHANNELS(client, channel) (": 405 " + client + " " + channel + " :You have joined too many channels\r\n")
 
 #define ERR_UNKNOWNCOMMAND(command) ("421 " + command + " :Unknown command\n")
 
