@@ -90,5 +90,5 @@
 
 #define ERR_BADCHANMASK(channel) ("476 " + channel + " :Bad Channel Mask\r\n")
 
-#define ERR_CHANOPRIVSNEEDED(channel) (std::string("482 ") + channel + " :You're not channel operator\n")
+#define ERR_CHANOPRIVSNEEDED(client, channel) (client + " " + channel + " :You're not channel operator\r\n")
 /*-----------------------------*/

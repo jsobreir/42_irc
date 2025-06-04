@@ -29,7 +29,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 		#if DEBUG
 		std::cout << "[DBG] Is operator" << std::endl;
         #endif
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channel->getName()));
 		return 0;
 	}
 
@@ -142,7 +142,7 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
     }
 
 	if (!channel->isOperator(client)) {
-		std::string err = ERR_CHANOPRIVSNEEDED(channelName);
+		std::string err = ERR_CHANOPRIVSNEEDED(client->getNick(), channelName);
 		send(client->getFd(), err.c_str(), err.length(), 0);
 		return 0;
 	}
@@ -169,20 +169,16 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
             reason = reason.substr(1);
     }
 
-	// Format KICK message
 	std::string kickMsg = ":" + client->getNick() + " KICK " + channelName + " " + targetNick;
 	if (!reason.empty())
 		kickMsg += " :" + reason;
 	kickMsg += "\r\n";
 
-	// Broadcast to channel
 	for (size_t i = 0; i < clients.size(); ++i)
 		send(clients[i]->getFd(), kickMsg.c_str(), kickMsg.length(), 0);
 
-	// Send to kicked client as well (optional redundancy)
 	send(targetClient->getFd(), kickMsg.c_str(), kickMsg.length(), 0);
 
-	// Remove user from channel
 	channel->removeClient(targetClient);
 	targetClient->decrementJoinedChannels();
 	return 0;
@@ -190,7 +186,6 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
-		// Not enough parameters: need at least the channel name
 		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
 		return 0;
 	}
@@ -202,7 +197,6 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 		return 0;
 	}
 
-	// If only one argument: user wants to get the topic
 	if (cmd.args.size() == 1) {
 		std::string topic = channel->getTopic();
 		if (topic.empty()) {
@@ -214,11 +208,10 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	}
 
 	if (channel->isTopicOnlyOps() && !channel->isOperator(client)) {
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channelName));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channelName));
 		return 0;
 	}
 
-	// Reconstruct topic from args[1..n]
 	std::string newTopic;
 	for (size_t i = 1; i < cmd.args.size(); ++i) {
 		if (i > 1)
@@ -226,14 +219,11 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 		newTopic += cmd.args[i];
 	}
 
-	// If it starts with a colon, remove it
 	if (!newTopic.empty() && newTopic[0] == ':')
 		newTopic = newTopic.substr(1);
 
-	// Set the new topic
 	channel->setTopic(newTopic);
 
-	// Broadcast topic change
 	std::string topicMsg = ":" + client->getNick() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
 	const std::vector<Client*>& clients = channel->getClients();
 	for (size_t i = 0; i < clients.size(); ++i) {
@@ -258,7 +248,7 @@ int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 		return 1;
 	}
 	if (channel->isInviteOnly() && !channel->isOperator(client)) {
-		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(channel->getName()));
+		sendCMD(client->getFd(), ERR_CHANOPRIVSNEEDED(client->getNick(), channel->getName()));
 		return 1;	
 	}
 	Client *targetClient = getClientByNick(cmd.args[0]);
