@@ -55,15 +55,15 @@ Server &Server::operator=(Server const &other) {
 }
 
 Server::~Server() {
-	// for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
-	// 	delete *it;
-	// }
-	// std::vector<Channel*>().swap(_channels);
+	for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+		delete *it;
+	}
+	std::vector<Channel*>().swap(_channels);
 
-	// for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-	// 	delete *it;
-	// }
-	// std::vector<Client*>().swap(_clients);
+	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+		delete *it;
+	}
+	std::vector<Client*>().swap(_clients);
 }
 
 
@@ -183,7 +183,7 @@ int Server::handleClientMessage(int fd) {
 	size_t pos = client->getBuffer().find('\n');
 	while (pos != std::string::npos) {
 		std::string line = client->getBuffer().substr(0, pos);
-		client->setBuffer(client->getBuffer().substr(pos + 1));
+		client->getBuffer().erase(0, pos + 1);
 		cmd = parseIRCLine(line);
 		pos = client->getBuffer().find('\n');
 

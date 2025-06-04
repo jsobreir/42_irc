@@ -11,22 +11,8 @@
 
 Server *g_server = NULL;
 
-void Server::clear_data() {
-	closeAllClientFds();
-	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); it++) {
-		Channel *temp = *it;
-		if (temp)
-			delete temp;
-	}
-	for (std::vector<Client *>::iterator it = _clients.begin(); it != _clients.end(); it++) {
-		Client *temp = *it;
-		if (temp)
-			delete temp;
-	}
-}
-
 void cleanup_and_exit(int signum) {
-	g_server->clear_data();
+	g_server->closeAllClientFds();
 	if (g_server) {
 		delete g_server;
 		g_server = NULL;
