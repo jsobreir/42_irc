@@ -18,6 +18,9 @@ class Client {
 		void setUser(std::string user);
 		std::string getNick() const;
 		std::string getUser() const;
+		std::string getBuffer() const;
+		void appendBuffer(std::string buffer);
+		void setBuffer(std::string buffer);
 		void setAuthenticated(bool value);
 		bool isAuthenticated() const;
 		size_t getChannelCount() const;
@@ -32,6 +35,7 @@ class Client {
 		std::string _user;
 		bool _authenticated; 
 		size_t _joinedChannels;
+		std::string _clientBuffer;
 };
 
 #endif

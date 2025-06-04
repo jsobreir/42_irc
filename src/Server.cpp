@@ -8,6 +8,21 @@
 std::string _serverName_g;
 std::string _creationDate_g;
 
+Server::Server() {
+	_nfds = 1;
+
+	std::time_t now = std::time(0);
+	struct tm *ltm = std::localtime(&now);
+
+	// Format the time as "YYYY-MM-DD HH:MM:SS"
+	char buffer[20];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
+	_creationDate = buffer;
+
+	_serverName = "42_ft_IRC";
+	_serverVersion = "1.0";
+}
+
 Server::Server(int port, std::string password)
 	: _nfds(1),
 	  _server_fd(-1),
@@ -26,22 +41,6 @@ const std::string &Server::getPassword() const {
 	return _password;
 }
 
-
-Server::Server() {
-	_nfds = 1;
-
-	std::time_t now = std::time(0);
-	struct tm *ltm = std::localtime(&now);
-
-	// Format the time as "YYYY-MM-DD HH:MM:SS"
-	char buffer[20];
-	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
-	_creationDate = buffer;
-
-	_serverName = "42_ft_IRC";
-	_serverVersion = "1.0";
-}
-
 Server::Server(Server const &other) {
 	_nfds = other._nfds;
 }
@@ -56,15 +55,15 @@ Server &Server::operator=(Server const &other) {
 }
 
 Server::~Server() {
-	for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
-		delete *it;
-	}
-	std::vector<Channel*>().swap(_channels);
+	// for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+	// 	delete *it;
+	// }
+	// std::vector<Channel*>().swap(_channels);
 
-	for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
-		delete *it;
-	}
-	std::vector<Client*>().swap(_clients);
+	// for (std::vector<Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
+	// 	delete *it;
+	// }
+	// std::vector<Client*>().swap(_clients);
 }
 
 
@@ -78,15 +77,6 @@ std::string Server::getServerName() const {
 
 std::string Server::getCreationDate() const {
 	return _creationDate;
-}
-
-void handleSIGINT(int sig) {
-	std::cout << "\nProgram terminated with CTL-C." << std::endl;
-	(void)sig;
-	close(g_server->getServerFd());
-	g_server->closeAllClientFds();
-	throw std::exception();
-
 }
 
 void Server::start() {
@@ -141,7 +131,6 @@ void Server::start() {
 		}
 		if (fds[0].revents & POLLIN)
 			acceptNewClient(fds);
-		// Handle client data
 		handleClientData(fds);
 	}
 }
@@ -156,6 +145,7 @@ void Server::acceptNewClient(struct pollfd fds[]) {
 
 		Client *new_client = new Client(client_fd);
 		_clients.push_back(new_client);
+		std::string buffer;
 	} else {
 		close(client_fd);
 	}
@@ -174,14 +164,15 @@ void Server::handleClientData(struct pollfd fds[]) {
 			} else {
 				std::cout << "Received message from client: " << buffer << std::endl;
 				buffer[bytes] = '\0';
-				handleClientMessage(fds[i].fd, buffer);
+				std::string appendString(buffer);
+				getClient(fds[i].fd)->appendBuffer(appendString);
+				handleClientMessage(fds[i].fd);
 			}
 		}
 	}
 }
 
-int Server::handleClientMessage(int fd, const char *msg) {
-	std::stringstream ss(msg);
+int Server::handleClientMessage(int fd) {
 	std::string line;
 	IRCCommand cmd;
 
@@ -189,8 +180,12 @@ int Server::handleClientMessage(int fd, const char *msg) {
 	std::string commands[n_commands] = {"CAP", "PASS", "NICK", "USER", "JOIN", "QUIT", "PRIVMSG", "MODE", "TOPIC", "KICK", "INVITE", "PING", "PART"};
 	Client *client = getClient(fd);
 
-	while (std::getline(ss, line)) {
+	size_t pos = client->getBuffer().find('\n');
+	while (pos != std::string::npos) {
+		std::string line = client->getBuffer().substr(0, pos);
+		client->setBuffer(client->getBuffer().substr(pos + 1));
 		cmd = parseIRCLine(line);
+		pos = client->getBuffer().find('\n');
 
 		std::cout << cmd.command << std::endl;
 		for (std::vector<std::string>::iterator it = cmd.args.begin(); it != cmd.args.end(); it++)
@@ -347,7 +342,7 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
     }
     sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
 
-	sendCMD(client->getFd(), RPL_ENDOFNAMES(channelName));
+	sendCMD(client->getFd(), RPL_ENDOFNAMES(client->getNick(), channelName));
 }
 
 void Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {

@@ -5,7 +5,9 @@ Client::Client () : _joinedChannels(0){
 }
 
 Client::Client (int fd) : _joinedChannels(0){
-	_fd = fd;
+    _fd = fd;
+    _joinedChannels = 0;
+	_authenticated = false;
 }
 
 Client::Client(Client const &other) {
@@ -14,6 +16,7 @@ Client::Client(Client const &other) {
     _nick = other._nick;
     _user = other._user;
     _joinedChannels = other._joinedChannels;
+	_authenticated = other._authenticated;
 }
 
 int Client::getFd() const {
@@ -49,6 +52,18 @@ std::string Client::getNick() const
 std::string Client::getUser() const
 {
 	return _user;
+}
+
+std::string Client::getBuffer() const {
+	return _clientBuffer;
+}
+
+void Client::appendBuffer(std::string buffer){
+	_clientBuffer.append(buffer);
+}
+
+void Client::setBuffer(std::string buffer) {
+	_clientBuffer = buffer;
 }
 
 void Client::incrementJoinedChannels()

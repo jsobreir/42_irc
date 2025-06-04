@@ -2,7 +2,7 @@
 
 int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
-		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		#if DEBUG
 			std::cout << "Entered No channel name if" << std::endl;
 		#endif
@@ -105,7 +105,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 							break;
 
 						default:
-							sendCMD(client->getFd(), ERR_UNKNOWNMODE(std::string(1, c)));
+							sendCMD(client->getFd(), ERR_UNKNOWNMODE(client->getNick(), std::string(1, c)));
 							break;
 					}
 				}
@@ -128,7 +128,7 @@ int Server::handleModeOperatorCMD(IRCCommand cmd, Client *client) {
 int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 	// USAGE: /KICK <channel> <nickname> [:reason...]
 	if (cmd.args.size() < 2) {
-		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		return 0;
 	}
 	std::string channelName = cmd.args[0];
@@ -186,7 +186,7 @@ int Server::handleKickOperatorCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
-		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		return 0;
 	}
 
@@ -200,9 +200,9 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() == 1) {
 		std::string topic = channel->getTopic();
 		if (topic.empty()) {
-			sendCMD(client->getFd(), RPL_NOTOPIC(channelName));
+			sendCMD(client->getFd(), RPL_NOTOPIC(client->getNick(), channelName));
 		} else {
-			sendCMD(client->getFd(), RPL_TOPIC(channelName, topic));
+			sendCMD(client->getFd(), RPL_TOPIC(client->getNick(), channelName, topic));
 		}
 		return 0;
 	}
@@ -235,7 +235,7 @@ int Server::handleTopicOperatorCMD(IRCCommand cmd, Client *client) {
 
 int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 2) {
-		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		return 1;
 	}
 	Channel *channel = getChannel(cmd.args[1]);
@@ -253,14 +253,14 @@ int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	}
 	Client *targetClient = getClientByNick(cmd.args[0]);
 	if (!targetClient) {
-		sendCMD(client->getFd(), ERR_NOSUCHNICK(cmd.args[0]));
+		sendCMD(client->getFd(), ERR_NOSUCHNICK(client->getNick(), cmd.args[0]));
 		return 1;
 	}
 	if (channel->hasClient(targetClient)) {
 		sendCMD(client->getFd(), ERR_USERONCHANNEL(targetClient->getNick(), channel->getName()));
 		return 1;	
 	}
-	sendCMD(client->getFd(), RPL_INVITING(targetClient->getNick(), channel->getName()));
+	sendCMD(client->getFd(), RPL_INVITING(client->getNick(), targetClient->getNick(), channel->getName()));
 	std::string msg = ":" + client->getNick() + "!" + client->getUser() + "@localhost INVITE " + targetClient->getNick() + " :" + channel->getName() + "\r\n";
 
 	sendCMD(targetClient->getFd(), msg);

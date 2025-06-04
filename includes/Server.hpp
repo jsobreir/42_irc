@@ -34,7 +34,7 @@ class Server {
 		void 	start();
 		void 	acceptNewClient(struct pollfd fds[]);
 		void 	handleClientData(struct pollfd fds[]);
-		int 	handleClientMessage(int client_fd, const char *msg);
+		int 	handleClientMessage(int client_fd);
 		void 	sendCMD(int fd, std::string msg);
 		void 	closeAllClientFds(void);
 		void 	removeClient(Client *client);
@@ -55,8 +55,8 @@ class Server {
 		int 	handlePartCMD(IRCCommand cmd, Client *client);
 		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
 		bool	isValidNickname(const std::string &nick);
-};
 
-void 	handleSIGINT(int sig);
+		void	clear_data();
+};
 
 #endif

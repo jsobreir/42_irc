@@ -26,7 +26,7 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size()) {
 		std::string key = cmd.args[0];
 		if (key != _password) {
-			sendCMD(client->getFd(), ERR_PASSWDMISMATCH);
+			sendCMD(client->getFd(), ERR_PASSWDMISMATCH(client->getNick()));
 			sendCMD(client->getFd(), "ERROR :Wrong Password");
 			int fd = client->getFd();
 			close(fd);
@@ -56,7 +56,7 @@ bool Server::isValidNickname(const std::string &nick) {
 
 int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.empty()) {
-		sendCMD(client->getFd(), ERR_NONICKNAMEGIVEN);
+		sendCMD(client->getFd(), ERR_NONICKNAMEGIVEN(client->getNick()));
 		return 0;
 	}
 
@@ -110,17 +110,16 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 		std::string hostInfo = RPL_YOURHOST(getServerName());
 		send(client->getFd(), hostInfo.c_str(), hostInfo.length(), 0);
 
-		std::string creationDate = RPL_CREATED(getCreationDate());
+		std::string creationDate = RPL_CREATED(client->getNick(), getCreationDate());
 		send(client->getFd(), creationDate.c_str(), creationDate.length(), 0);
 
-		std::string capabilities = RPL_MYINFO(getServerName(), client->getNick(), _serverVersion);
+		std::string capabilities = RPL_MYINFO(client->getNick(), _serverVersion);
 		send(client->getFd(), capabilities.c_str(), capabilities.length(), 0);
 
-		std::string motdStart = RPL_MOTDSTART(client->getNick(), getServerName());
+		std::string motdStart = RPL_MOTDSTART(client->getNick());
 		send(client->getFd(), motdStart.c_str(), motdStart.length(), 0);
 
-		std::string motd = RPL_MOTD(client->getNick());
-		send(client->getFd(), motd.c_str(), motd.length(), 0);
+		sendCMD(client->getFd(), RPL_MOTD(client->getNick()));
 
 		#if DEBUG
 			std::cout << "[DBG - handleUserCMD]Sent full welcome sequence to client " << client->getFd() << std::endl;
@@ -131,7 +130,7 @@ int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 
 int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1) {
-		send(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command).c_str(), ERR_NEEDMOREPARAMS(cmd.command).length(), 0);
+		send(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command).c_str(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command).length(), 0);
 		return 0;
 	}
 
@@ -161,7 +160,7 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 			}
 		}
 		if (channelName[0] != '#') {
-			sendCMD(client->getFd(), ERR_BADCHANMASK(channelName));
+			sendCMD(client->getFd(), ERR_BADCHANMASK(client->getNick(), channelName));
 			continue;
 		}
 
@@ -326,7 +325,7 @@ int Server::handlePingCMD(IRCCommand cmd, Client *client) {
 
 int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 2) {
-		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(cmd.command));
+		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		return 1;
 	}
 	std::string channelName;
