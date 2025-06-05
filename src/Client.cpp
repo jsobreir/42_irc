@@ -54,7 +54,7 @@ std::string Client::getUser() const
 	return _user;
 }
 
-std::string Client::getBuffer() const {
+std::string &Client::getBuffer() {
 	return _clientBuffer;
 }
 

@@ -162,8 +162,8 @@ void Server::handleClientData(struct pollfd fds[]) {
 				_nfds--;
 				i--;
 			} else {
-				std::cout << "Received message from client: " << buffer << std::endl;
 				buffer[bytes] = '\0';
+				std::cout << "Received message from client: " << buffer << std::endl;
 				std::string appendString(buffer);
 				getClient(fds[i].fd)->appendBuffer(appendString);
 				handleClientMessage(fds[i].fd);
