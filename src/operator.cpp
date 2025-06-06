@@ -264,6 +264,5 @@ int		Server::handleInviteOperatorCMD(IRCCommand cmd, Client *client) {
 	std::string msg = ":" + client->getNick() + "!" + client->getUser() + "@localhost INVITE " + targetClient->getNick() + " :" + channel->getName() + "\r\n";
 
 	sendCMD(targetClient->getFd(), msg);
-	joinChannel(targetClient, channel->getName());
-	return 0;
+	channel->inviteClient(targetClient->getNick());
 }
