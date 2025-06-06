@@ -24,7 +24,7 @@
 #define RPL_TOPICWHOTIME(nick, channel, setter, time) (":" + SERVER_NAME + " 333 " + nick + " " + channel + " " + setter + " " + time + "\r\n")
 #define RPL_INVITING(nick, target, channel) (":" + SERVER_NAME + " 341 " + nick + " " + target + " " + channel + "\r\n")
 #define RPL_WHOREPLY(nick, channel, user, host, server, nick2, flags, hops, realname) (":" + SERVER_NAME + " 352 " + nick + " " + channel + " " + user + " " + host + " " + server + " " + nick2 + " " + flags + " :" + hops + " " + realname + "\r\n")
-#define RPL_NAMREPLY(nick, channel, users) (":" + SERVER_NAME + " 353 " + nick + " " + " " + channel + " :" + users + "\r\n")
+#define RPL_NAMREPLY(nick, channel, users) (":" + SERVER_NAME + " 353 " + nick + " = " + channel + " :" + users + "\r\n")
 #define RPL_ENDOFNAMES(nick, channel) (":" + SERVER_NAME + " 366 " + nick + " " + channel + " :End of /NAMES list\r\n")
 
 /*-------MOTD Replies---------*/
