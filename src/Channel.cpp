@@ -1,10 +1,8 @@
-#include "Channel.hpp"
-#include "Client.hpp"
+#include "IRC.hpp"
 
 Channel::Channel() 
 	: _inviteOnly(false), _topicOnlyOps(true), _userLimit(0) 
 {
-	// _operators vector is default-initialized empty
 }
 
 Channel::Channel(int fd) 
@@ -141,56 +139,56 @@ void Channel::setUserLimit(size_t limit) {
 }
 
 bool Channel::hasClient(Client* client) const {
-    #if DEBUG
-        std::cout << "[DBG - hasClient] Checking if there is a client " << std::endl;
-    #endif
-    for (size_t i = 0; i < _channelClients.size(); ++i) {
-        #if DEBUG
-            std::cout << "[DBG - hasClient] Clients in channel: " << _channelClients.size() << std::endl;
-        #endif
-        if (_channelClients[i] == client) {
-            #if DEBUG
-                std::cout << "[DBG - hasClient] Client found in channel." << std::endl;
-            #endif
-            return true;
-        }
-    }
-    #if DEBUG
-        std::cout << "[DBG - hasClient] Client not found in channel." << std::endl;
-    #endif
-    return false;
+	#if DEBUG
+		std::cout << "[DBG - hasClient] Checking if there is a client " << std::endl;
+	#endif
+	for (size_t i = 0; i < _channelClients.size(); ++i) {
+		#if DEBUG
+			std::cout << "[DBG - hasClient] Clients in channel: " << _channelClients.size() << std::endl;
+		#endif
+		if (_channelClients[i] == client) {
+			#if DEBUG
+				std::cout << "[DBG - hasClient] Client found in channel." << std::endl;
+			#endif
+			return true;
+		}
+	}
+	#if DEBUG
+		std::cout << "[DBG - hasClient] Client not found in channel." << std::endl;
+	#endif
+	return false;
 }
 
 bool Channel::hasAnyClients() const {
-    #if DEBUG
-        std::cout << "[DBG - hasAnyClients] Checking if there are any clients in channel " << _name << std::endl;
-        std::cout << "[DBG - hasAnyClients] Clients in channel: " << _channelClients.size() << std::endl;
-    #endif
-    return !_channelClients.empty();
+	#if DEBUG
+		std::cout << "[DBG - hasAnyClients] Checking if there are any clients in channel " << _name << std::endl;
+		std::cout << "[DBG - hasAnyClients] Clients in channel: " << _channelClients.size() << std::endl;
+	#endif
+	return !_channelClients.empty();
 }
 
 void Channel::broadcastToChannel(const std::string& message) {
-    for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
-        if (*it == NULL) {
-            #if DEBUG
-                std::cerr << "[DBG - broadcastToChannel] Null client in channel!" << std::endl;
-            #endif
-            continue;
-        }
-        (*it)->sendMessage(message);
-    }
+	for (std::vector<Client*>::iterator it = _channelClients.begin(); it != _channelClients.end(); ++it) {
+		if (*it == NULL) {
+			#if DEBUG
+				std::cerr << "[DBG - broadcastToChannel] Null client in channel!" << std::endl;
+			#endif
+			continue;
+		}
+		(*it)->sendMessage(message);
+	}
 }
 
 int Channel::removeClient(Client* client) {
 	std::vector<Client*>::iterator it = std::find(_channelClients.begin(), _channelClients.end(), client);
 	if (it != _channelClients.end()) {
-		removeOperator(client); // remove operator status if any
+		removeOperator(client);
 		_channelClients.erase(it);
 		std::cout << "Client " << client->getFd() << " left channel " << _name << std::endl;
 
 		#if DEBUG
-        	std::cout << "Remaining clients in channel: " << _channelClients.size() << std::endl;
-        	std::cout << "Operators in channel: " << _operators.size() << std::endl;
+			std::cout << "Remaining clients in channel: " << _channelClients.size() << std::endl;
+			std::cout << "Operators in channel: " << _operators.size() << std::endl;
 		#endif
 
 		return 0;
@@ -199,44 +197,44 @@ int Channel::removeClient(Client* client) {
 }
 
 Client* Channel::getOperator() const {
-    if (!_operators.empty())
-        return _operators[0];
-    return NULL;
+	if (!_operators.empty())
+		return _operators[0];
+	return NULL;
 }
 
 bool Channel::isFull() const {
-    return _userLimit > 0 && _channelClients.size() >= _userLimit;
+	return _userLimit > 0 && _channelClients.size() >= _userLimit;
 }
 
 bool Channel::isInvited(Client* client) const {
-    return std::find(_invitedClients.begin(), _invitedClients.end(), client->getNick()) != _invitedClients.end();
+	return std::find(_invitedClients.begin(), _invitedClients.end(), client->getNick()) != _invitedClients.end();
 }
 
 void Channel::inviteClient(const std::string& nickname) {
-    if (std::find(_invitedClients.begin(), _invitedClients.end(), nickname) == _invitedClients.end()) {
-        _invitedClients.push_back(nickname);
-    }
+	if (std::find(_invitedClients.begin(), _invitedClients.end(), nickname) == _invitedClients.end()) {
+		_invitedClients.push_back(nickname);
+	}
 }
 
 void Channel::revokeInvite(const std::string& nickname) {
-    _invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), nickname), _invitedClients.end());
+	_invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), nickname), _invitedClients.end());
 }
 
 std::string Channel::getActiveModes() const {
-    std::string modes = "+";
+	std::string modes = "+";
 
-    if (_inviteOnly) {
-        modes += "i"; // Invite-only mode
-    }
-    if (_topicOnlyOps) {
-        modes += "t"; // Topic-only ops mode
-    }
-    if (!_key.empty()) {
-        modes += "k"; // Key mode
-    }
-    if (_userLimit > 0) {
-        modes += "l"; // User limit mode
-    }
+	if (_inviteOnly) {
+		modes += "i";
+	}
+	if (_topicOnlyOps) {
+		modes += "t";
+	}
+	if (!_key.empty()) {
+		modes += "k";
+	}
+	if (_userLimit > 0) {
+		modes += "l";
+	}
 
-    return modes;
+	return modes;
 }

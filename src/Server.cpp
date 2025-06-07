@@ -1,9 +1,4 @@
-#include "Server.hpp"
-#include "Client.hpp"
 #include "IRC.hpp"
-#include "Messages.hpp"
-
-#define MAX_CLIENTS 1024
 
 std::string _serverName_g;
 std::string _creationDate_g;
@@ -14,7 +9,6 @@ Server::Server() {
 	std::time_t now = std::time(0);
 	struct tm *ltm = std::localtime(&now);
 
-	// Format the time as "YYYY-MM-DD HH:MM:SS"
 	char buffer[20];
 	std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", ltm);
 	_creationDate = buffer;
@@ -89,7 +83,6 @@ void Server::start() {
 		throw std::exception();
 	}
 
-	// Set SO_REUSEADDR to allow immediate reuse of the port
 	int opt = 1;
 	if (setsockopt(_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
 		perror("setsockopt");
@@ -240,7 +233,7 @@ int Server::handleClientMessage(int fd) {
 			default:
 				#if DEBUG
 				std::cout << "[DBG - handleClientMessage]Unknown command: " << cmd.command << std::endl;
-				#endif   
+				#endif
 				break;
 		}
 	}
@@ -320,9 +313,9 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 
 	client->incrementJoinedChannels();
 
-    std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost";
-    std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
-    sendCMD(client->getFd(), joinMsg);
+	std::string prefix = ":" + client->getNick() + "!" + client->getUser() + "@localhost";
+	std::string joinMsg = prefix + " JOIN :" + channelName + "\r\n";
+	sendCMD(client->getFd(), joinMsg);
 
 	broadcastMsg(channel, joinMsg, client);
 
@@ -330,17 +323,17 @@ void Server::joinChannel(Client *client, const std::string &channelName) {
 	sendCMD(client->getFd(), RPL_TOPIC2(client->getNick(), channelName, topic));
 
 	const std::vector<Client*> &clients = channel->getClients();
-	
+
 	std::string userList = "";
-    Client* op = channel->getOperator();
-    for (size_t i = 0; i < clients.size(); i++) {
-        if (i != 0)
-            userList += " ";
-        if (clients[i] == op)
-            userList += "@";
-        userList += clients[i]->getNick();
-    }
-    sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
+	Client* op = channel->getOperator();
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (i != 0)
+			userList += " ";
+		if (clients[i] == op)
+			userList += "@";
+		userList += clients[i]->getNick();
+	}
+	sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channelName, userList));
 
 	sendCMD(client->getFd(), RPL_ENDOFNAMES(client->getNick(), channelName));
 }

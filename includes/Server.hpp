@@ -1,5 +1,4 @@
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#pragma once
 
 #include "IRC.hpp"
 
@@ -56,5 +55,3 @@ class Server {
 		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
 		bool	isValidNickname(const std::string &nick);
 };
-
-#endif

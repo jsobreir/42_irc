@@ -1,5 +1,4 @@
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#pragma once
 
 #include "IRC.hpp"
 
@@ -37,5 +36,3 @@ class Client {
 		size_t _joinedChannels;
 		std::string _clientBuffer;
 };
-
-#endif
