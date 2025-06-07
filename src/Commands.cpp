@@ -90,7 +90,6 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 	return 0;
 }
 
-
 int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1)
 		return 0;
@@ -263,6 +262,11 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' - starting to check if channel has client" << std::endl;
 		#endif
 
+		if (!channel->hasClient(client)) {
+			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), target));
+			return 1;
+		}
+		
 		if (!channel->hasAnyClients()) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] No clients in channel." << std::endl;

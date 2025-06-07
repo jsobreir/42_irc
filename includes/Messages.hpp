@@ -29,8 +29,8 @@
 
 /*-------MOTD Replies---------*/
 #define RPL_MOTDSTART(nick) (":" + SERVER_NAME + " 375 " + nick + " :- " + SERVER_NAME + " Message of the day -\r\n")
-#define RPL_MOTD(nick) (":" + SERVER_NAME + " 372 " + nick + " :-" + "\r\n")
-#define RPL_ENDOFMOTD(nick) (":" + SERVER_NAME + " 376 " + nick + " :End of /MOTD command.\r\n")
+#define RPL_MOTD(nick) (":" + SERVER_NAME + " 372 " + nick + " : Welcome to the 42_ft_IRC!\r\n")
+#define RPL_ENDOFMOTD(nick) (":" + SERVER_NAME + " 376 " + nick + " : Enjoy your stay, take it easy on the tests!\r\n")
 
 /*---------Error replies-------*/
 #define ERR_NOSUCHNICK(nick, target) (":" + SERVER_NAME + " 401 " + nick + " " + target + " :No such nick/channel\r\n")
