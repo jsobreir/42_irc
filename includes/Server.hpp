@@ -54,4 +54,6 @@ class Server {
 		int 	handlePartCMD(IRCCommand cmd, Client *client);
 		void	broadcastMsg(Channel *channel, std::string msg, Client *client);
 		bool	isValidNickname(const std::string &nick);
+		void	handleClientDisconnection(Client *client);
+		void	sendUpdatedNamesList(Channel *channel);
 };

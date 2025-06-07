@@ -150,6 +150,10 @@ void Server::handleClientData(struct pollfd fds[]) {
 			char buffer[1024];
 			int bytes = recv(fds[i].fd, buffer, sizeof(buffer) - 1, 0);
 			if (bytes <= 0) {
+				Client *client = getClient(fds[i].fd);
+				if (client) {
+					handleClientDisconnection(client);
+				}
 				close(fds[i].fd);
 				fds[i] = fds[_nfds - 1];
 				_nfds--;
@@ -157,8 +161,19 @@ void Server::handleClientData(struct pollfd fds[]) {
 			} else {
 				buffer[bytes] = '\0';
 				std::cout << "Received message from client: " << buffer << std::endl;
+
+				Client *client = getClient(fds[i].fd);
+				if (!client) {
+					close(fds[i].fd);
+					fds[i] = fds[_nfds - 1];
+					_nfds--;
+					i--;
+					continue;
+				}
+
 				std::string appendString(buffer);
-				getClient(fds[i].fd)->appendBuffer(appendString);
+				client->appendBuffer(appendString);
+
 				handleClientMessage(fds[i].fd);
 			}
 		}
@@ -361,4 +376,50 @@ void Server::broadcastMsg(Channel *channel, std::string msg, Client *client) {
 			sendCMD(otherClient->getFd(), msg);
 		}
 	}
+}
+
+void Server::handleClientDisconnection(Client *client) {
+	for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+		Channel *channel = *it;
+		if (channel->hasClient(client)) {
+			channel->removeClient(client);
+
+			if (channel->getClients().empty()) {
+				delete channel;
+				it = _channels.erase(it);
+				--it;
+			} else {
+				sendUpdatedNamesList(channel);
+			}
+		}
+	}
+	removeClient(client);
+
+	#if DEBUG
+		std::cout << "[DBG - handleClientDisconnection] Client " << client->getNick() << " disconnected and cleaned up." << std::endl;
+	#endif
+}
+
+void Server::sendUpdatedNamesList(Channel *channel) {
+	const std::vector<Client*> &clients = channel->getClients();
+	std::string userList = "";
+	Client* op = channel->getOperator();
+
+	for (size_t i = 0; i < clients.size(); i++) {
+		if (i != 0)
+			userList += " ";
+		if (clients[i] == op)
+			userList += "@";
+		userList += clients[i]->getNick();
+	}
+
+	for (size_t i = 0; i < clients.size(); i++) {
+		Client *client = clients[i];
+		sendCMD(client->getFd(), RPL_NAMREPLY(client->getNick(), channel->getName(), userList));
+		sendCMD(client->getFd(), RPL_ENDOFNAMES(client->getNick(), channel->getName()));
+	}
+
+	#if DEBUG
+		std::cout << "[DBG - sendUpdatedNamesList] Updated NAMES list sent for channel " << channel->getName() << std::endl;
+	#endif
 }
