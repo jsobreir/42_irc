@@ -254,7 +254,8 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' / '!channel'" << std::endl;
 			#endif
-			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channel->getName()));
+			//sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channel->getName()));
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), target));
 			return 1;
 		}
 
