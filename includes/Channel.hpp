@@ -1,12 +1,11 @@
-#ifndef CHANNEL_HPP
-#define CHANNEL_HPP
+#pragma once
 
 #include "IRC.hpp"
 
 class Client;
 
 class Channel {
-    public:
+	public:
 		Channel ();
 		Channel (int fd);
 		Channel (Channel const &other);
@@ -42,24 +41,16 @@ class Channel {
 		bool hasAnyClients() const;
 		int removeClient(Client* client);
 
-        //bool isBanned(Client* client) const;
-        //void banClient(const std::string& nickname);
-        //void unbanClient(const std::string& nickname);
+		bool isFull() const;
 
-		//const std::vector<std::string>& getBanMasks() const;
-		//void addBanMask(const std::string& mask);
-		//void removeBanMask(const std::string& mask);
-
-        bool isFull() const;
-
-        bool isInvited(Client* client) const;
-        void inviteClient(const std::string& nickname);
-        void revokeInvite(const std::string& nickname);
+		bool isInvited(Client* client) const;
+		void inviteClient(const std::string& nickname);
+		void revokeInvite(const std::string& nickname);
 
 		void broadcastToChannel(const std::string& message);
 		std::string getActiveModes() const;
 
-    private:
+	private:
 		std::vector<std::string> _banMasks;
 		std::vector<Client *> _channelClients;
 		std::vector<Client*> _operators;
@@ -72,5 +63,3 @@ class Channel {
 		std::string _key;
 		size_t _userLimit;
 } ;
-
-#endif

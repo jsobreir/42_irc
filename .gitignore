@@ -1,3 +1,4 @@
+# Igonore the object files and folder
 *.o
 obj/
 # Ignore the executable

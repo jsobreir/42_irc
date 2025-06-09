@@ -1,26 +1,26 @@
-#include "Client.hpp"
+#include "IRC.hpp"
 
 Client::Client () : _joinedChannels(0){
 
 }
 
 Client::Client (int fd) : _joinedChannels(0){
-    _fd = fd;
-    _joinedChannels = 0;
+	_fd = fd;
+	_joinedChannels = 0;
 	_authenticated = false;
 }
 
 Client::Client(Client const &other) {
 
-    _fd = other._fd;
-    _nick = other._nick;
-    _user = other._user;
-    _joinedChannels = other._joinedChannels;
+	_fd = other._fd;
+	_nick = other._nick;
+	_user = other._user;
+	_joinedChannels = other._joinedChannels;
 	_authenticated = other._authenticated;
 }
 
 int Client::getFd() const {
-    return _fd;
+	return _fd;
 }
 
 Client &Client::operator=(Client const &other) {
@@ -82,5 +82,5 @@ size_t Client::getChannelCount() const
 }
 
 void Client::sendMessage(const std::string& message) {
-    send(_fd, message.c_str(), message.size(), 0);
+	send(_fd, message.c_str(), message.size(), 0);
 }

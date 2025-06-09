@@ -1,25 +1,6 @@
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-#include <iostream>
-#include <cstring>
-#include <errno.h>
-#include <cstdlib>
-
 #include "IRC.hpp"
 
 Server *g_server = NULL;
-
-void cleanup_and_exit(int signum) {
-	g_server->closeAllClientFds();
-	if (g_server) {
-		delete g_server;
-		g_server = NULL;
-	}
-	std::cout << "\nServer shutting down due to CTRL+C " << signum << std::endl;
-	std::exit(EXIT_SUCCESS);
-}
 
 int main(int argc, char **argv) {
 	std::signal(SIGINT, cleanup_and_exit);

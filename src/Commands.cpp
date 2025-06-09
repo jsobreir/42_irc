@@ -6,9 +6,9 @@ int Server::handleCapCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args[1] == "LS") {
 		std::string nickname = client->getNick();
 		if (nickname.empty())
-			nickname = "*"; // RFC fallback
+			nickname = "*";
 
-		std::string capList = "multi-prefix sasl"; // IRCv3 capabilities
+		std::string capList = "multi-prefix sasl";
 		std::string capResponse = "CAP " + nickname + " LS :" + capList + "\r\n";
 		send(client->getFd(), capResponse.c_str(), capResponse.length(), 0);
 
@@ -38,7 +38,6 @@ int    Server::handlePassCMD(IRCCommand cmd, Client *client) {
 bool Server::isValidNickname(const std::string &nick) {
 	if (nick.empty()) return false;
 
-	// Disallow digits as the first char if desired:
 	if (isdigit(nick[0])) return false;
 
 	for (size_t i = 0; i < nick.length(); ++i) {
@@ -62,7 +61,6 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 
 	std::string newNick = cmd.args[0];
 
-	// Validate nickname characters
 	if (newNick.empty() ||
 		newNick[0] == ':' ||
 		newNick[0] == '#' ||
@@ -72,7 +70,6 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 		return 0;
 	}
 
-	// Check if nickname is already in use
 	if (getClientByNick(newNick)) {
 		sendCMD(client->getFd(), ERR_NICKNAMEINUSE(newNick));
 		return 0;
@@ -84,7 +81,6 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 	std::string nickMsg = ":" + oldNick + "!" + client->getUser() +
 						" NICK :" + newNick + "\r\n";
 
-	// Optionally: only broadcast if the user is registered
 	send(client->getFd(), nickMsg.c_str(), nickMsg.length(), 0);
 
 #if DEBUG
@@ -93,7 +89,6 @@ int Server::handleNickCMD(IRCCommand cmd, Client *client) {
 #endif
 	return 0;
 }
-
 
 int Server::handleUserCMD(IRCCommand cmd, Client *client) {
 	if (cmd.args.size() < 1)
@@ -139,7 +134,6 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 
 
 	while (std::getline(channelStream, channelName, ',')) {
-		// Trim leading and trailing whitespace
 		size_t start = channelName.find_first_not_of(" ");
 		size_t end = channelName.find_last_not_of(" ");
 		if (start == std::string::npos || end == std::string::npos) {
@@ -234,7 +228,6 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 	std::string target = cmd.args[0];
 	std::string message = cmd.args[1];
 
-	// Trim leading whitespace from the message
 	size_t pos = message.find_first_not_of(" ");
 	if (pos != std::string::npos) {
 		message = message.substr(pos);
@@ -249,7 +242,7 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 		#if DEBUG
 			std::cout << "[DBG - PRIVMSG] Removing leading colon from message" << std::endl;
 		#endif
-		message = message.substr(1); // Remove leading colon
+		message = message.substr(1);
 	}
 
 	if (target[0] == '#') {
@@ -261,7 +254,8 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' / '!channel'" << std::endl;
 			#endif
-			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channel->getName()));
+			//sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channel->getName()));
+			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), target));
 			return 1;
 		}
 
@@ -269,6 +263,11 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 				std::cout << "[DBG - PRIVMSG] Inside 'target if' - starting to check if channel has client" << std::endl;
 		#endif
 
+		if (!channel->hasClient(client)) {
+			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), target));
+			return 1;
+		}
+		
 		if (!channel->hasAnyClients()) {
 			#if DEBUG
 				std::cout << "[DBG - PRIVMSG] No clients in channel." << std::endl;
@@ -280,21 +279,19 @@ int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
 			std::cout << "[DBG- PRIVMSG] Ive passed the check for user on channel and not returned 1" << std::endl;
 		#endif
 
-		//if for debugging purposes
 		if (client == NULL) {
 			#if DEBUG
 				std::cerr << "[DBG - PRIVMSG] Client is nullptr!" << std::endl;
 			#endif
 			return 1;
 		}
-		//if for debugging purposes
 		if (client->getNick().empty()) {
 			#if DEBUG
 				std::cerr << "[DBG - PRIVMSG] Client nickname is empty!" << std::endl;
 			#endif
 			return 1;
 		}
-		// Construct the full message
+
 		std::string fullMsg = ":" + client->getNick() + " PRIVMSG " + target + " :" + message + "\r\n";
 		#if DEBUG
 			std::cout << "[DBG- PRIVMSG] Message has been construted, next step is the broadcast." << std::endl;
@@ -343,10 +340,8 @@ int Server::handlePartCMD(IRCCommand cmd, Client *client) {
 			return 1;
 		}
 
-		// Remove the client from the channel
 		channel->removeClient(client);
 
-		// Construct the PART message
 		std::string reason;
 		if (cmd.args.size() > 1) {
 			reason = cmd.args[1];
@@ -375,4 +370,3 @@ int Server::handlePartCMD(IRCCommand cmd, Client *client) {
 	}
 	return 0;
 }
-
