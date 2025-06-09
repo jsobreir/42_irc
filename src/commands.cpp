@@ -200,34 +200,34 @@ int Server::handleJoinCMD(IRCCommand cmd, Client *client) {
 }
 
 int Server::handleQuitCMD(IRCCommand cmd, Client *client) {
-    #if DEBUG
-        std::cout << "[DBG - handleQuitCMD]Client " << client->getFd() << " disconnected" << std::endl;
-    #endif
+	#if DEBUG
+		std::cout << "[DBG - handleQuitCMD]Client " << client->getFd() << " disconnected" << std::endl;
+	#endif
 
-    std::string reason;
-    if (!cmd.args.empty()) {
-        for (size_t i = 0; i < cmd.args.size(); ++i) {
-            reason.append(cmd.args[i]);
-            if (i != cmd.args.size() - 1)
-                reason.append(" ");
-        }
-    }
+	std::string reason;
+	if (!cmd.args.empty()) {
+		for (size_t i = 0; i < cmd.args.size(); ++i) {
+			reason.append(cmd.args[i]);
+			if (i != cmd.args.size() - 1)
+				reason.append(" ");
+		}
+	}
 
-    std::string quitMsg = ":" + client->getNick() + "!" + client->getUser() + "@127.0.0.1 QUIT :" + reason + "#7\r\n";
+	std::string quitMsg = ":" + client->getNick() + "!" + client->getUser() + "@127.0.0.1 QUIT :" + reason + "#7\r\n";
 
-    for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
-        Channel* chan = *it;
+	for (std::vector<Channel *>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+		Channel* chan = *it;
 
-        if (chan->hasClient(client)) {
+		if (chan->hasClient(client)) {
 			broadcastMsg(chan, quitMsg, client);
 
-            chan->removeClient(client);
-        }
-    }
+			chan->removeClient(client);
+		}
+	}
 	sendCMD(client->getFd(), quitMsg);
-    close(client->getFd());
-    removeClient(client);
-    return 0;
+	close(client->getFd());
+	removeClient(client);
+	return 0;
 }
 
 int Server::handlePrivMsgCMD(IRCCommand cmd, Client *client) {
@@ -323,11 +323,12 @@ int Server::handlePingCMD(IRCCommand cmd, Client *client) {
 	return 0;
 }
 
-int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
-	if (cmd.args.size() < 2) {
+int Server::handlePartCMD(IRCCommand cmd, Client *client) {
+	if (cmd.args.size() < 1) {
 		sendCMD(client->getFd(), ERR_NEEDMOREPARAMS(client->getNick(), cmd.command));
 		return 1;
 	}
+
 	std::string channelName;
 	std::stringstream ss(cmd.args[0]);
 	while (std::getline(ss, channelName, ',')) {
@@ -336,10 +337,16 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 			sendCMD(client->getFd(), ERR_NOSUCHCHANNEL(client->getNick(), channelName));
 			return 1;
 		}
-		if (channel->removeClient(client) == 1) {
+
+		if (!channel->hasClient(client)) {
 			sendCMD(client->getFd(), ERR_NOTONCHANNEL(client->getNick(), channelName));
 			return 1;
 		}
+
+		// Remove the client from the channel
+		channel->removeClient(client);
+
+		// Construct the PART message
 		std::string reason;
 		if (cmd.args.size() > 1) {
 			reason = cmd.args[1];
@@ -352,6 +359,19 @@ int 	Server::handlePartCMD(IRCCommand cmd, Client *client) {
 		std::string partMsg = ":" + client->getNick() + "!" + client->getUser() + "@localhost PART " + channelName + " :" + reason + "\r\n";
 		broadcastMsg(channel, partMsg, client);
 		sendCMD(client->getFd(), partMsg);
+
+		if (channel->getClients().empty()) {
+			#if DEBUG
+				std::cout << "[DBG - handlePartCMD] Channel " << channelName << " is empty. Destroying channel." << std::endl;
+			#endif
+			for (std::vector<Channel*>::iterator it = _channels.begin(); it != _channels.end(); ++it) {
+				if ((*it)->getName() == channelName) {
+					delete *it;
+					_channels.erase(it);
+					break;
+				}
+			}
+		}
 	}
 	return 0;
 }
